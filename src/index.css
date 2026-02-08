@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  /* Removed display: flex and place-items: center which were causing layout issues */
+  background-color: #030712;
+  /* Default to dark background (gray-950) to match app theme */
+  color: white;
+}

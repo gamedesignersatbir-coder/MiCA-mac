@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AI Generation Progress - MiCA AI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#5048e5",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#121121",
+                        "navy-deep": "#0a0a12",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .progress-ring-gradient {
+            background: conic-gradient(from 0deg, #5048e5 0%, #5048e5 65%, transparent 65%, transparent 100%);
+        }
+        .pulse-soft {
+            animation: pulse-opacity 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse-opacity {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .bg-glow {
+            background: radial-gradient(circle at center, rgba(80, 72, 229, 0.15) 0%, rgba(18, 17, 33, 0) 70%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-white">
+<!-- iOS Status Bar Mockup -->
+<div class="flex items-center justify-between px-8 pt-4 pb-2 w-full max-w-md mx-auto">
+<span class="text-sm font-semibold">9:41</span>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-base">signal_cellular_4_bar</span>
+<span class="material-symbols-outlined text-base">wifi</span>
+<span class="material-symbols-outlined text-base">battery_full</span>
+</div>
+</div>
+<!-- Main Content Container -->
+<div class="relative flex flex-col h-full min-h-screen w-full max-w-md mx-auto px-6 overflow-hidden">
+<!-- Header / Close Button -->
+<div class="flex items-center justify-between py-4">
+<div class="size-10 flex items-center justify-center rounded-full bg-white/5">
+<span class="material-symbols-outlined text-white">close</span>
+</div>
+<div class="text-xs font-bold tracking-widest uppercase text-white/40">Step 3 of 4</div>
+<div class="size-10"></div> <!-- Spacer -->
+</div>
+<!-- Progress Ring Section -->
+<div class="relative flex flex-col items-center justify-center py-12">
+<!-- Glow Background Effect -->
+<div class="absolute inset-0 bg-glow -z-10"></div>
+<div class="relative flex items-center justify-center">
+<!-- Circular Loader -->
+<div class="size-48 rounded-full border-4 border-white/5 flex items-center justify-center relative">
+<div class="absolute inset-0 rounded-full border-4 border-transparent border-t-primary border-r-primary rotate-45"></div>
+<div class="flex flex-col items-center">
+<span class="text-4xl font-bold">65%</span>
+<span class="text-[10px] uppercase tracking-widest text-white/50 mt-1">Ready</span>
+</div>
+</div>
+</div>
+<div class="mt-10 text-center">
+<h1 class="text-2xl font-bold leading-tight tracking-tight">
+                    Generating Your Campaign<span class="pulse-soft">...</span>
+</h1>
+<p class="text-white/50 text-sm mt-2 px-8">
+                    Our AI is crafting a high-conversion 4-week strategy just for you.
+                </p>
+</div>
+</div>
+<!-- Checklist Section -->
+<div class="flex-1 w-full bg-white/5 rounded-xl p-6 backdrop-blur-sm border border-white/10 space-y-6">
+<!-- Item 1: Completed -->
+<div class="flex items-center gap-4 opacity-50">
+<div class="size-6 rounded-full bg-emerald-500/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-emerald-500 text-sm">check</span>
+</div>
+<p class="text-base font-medium line-through decoration-white/20">Analyzing product details</p>
+</div>
+<!-- Item 2: Completed -->
+<div class="flex items-center gap-4 opacity-50">
+<div class="size-6 rounded-full bg-emerald-500/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-emerald-500 text-sm">check</span>
+</div>
+<p class="text-base font-medium line-through decoration-white/20">Building strategy</p>
+</div>
+<!-- Item 3: Active -->
+<div class="flex items-center gap-4">
+<div class="size-6 rounded-full border-2 border-primary flex items-center justify-center relative">
+<div class="size-2 bg-primary rounded-full pulse-soft"></div>
+</div>
+<p class="text-base font-semibold text-white">Creating email templates</p>
+</div>
+<!-- Item 4: Pending -->
+<div class="flex items-center gap-4 text-white/30">
+<div class="size-6 rounded-full border-2 border-white/10 flex items-center justify-center"></div>
+<p class="text-base font-medium">Generating social media posts</p>
+</div>
+<!-- Item 5: Pending -->
+<div class="flex items-center gap-4 text-white/30">
+<div class="size-6 rounded-full border-2 border-white/10 flex items-center justify-center"></div>
+<p class="text-base font-medium">Finalizing brand assets</p>
+</div>
+</div>
+<!-- Footer Info -->
+<div class="py-12 flex flex-col items-center gap-4">
+<div class="flex items-center gap-2 text-white/40">
+<span class="material-symbols-outlined text-sm">schedule</span>
+<p class="text-sm font-normal">This usually takes 60-90 seconds</p>
+</div>
+<!-- iOS Home Indicator -->
+<div class="h-1.5 w-32 bg-white/20 rounded-full mt-4"></div>
+</div>
+</div>
+</body></html>

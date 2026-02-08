@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Campaign Tone Preview</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#5048e5",
+                        "success": "#10b981",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#0B0F19",
+                        "surface-dark": "#1F2937",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ios-blur {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
+<!-- Top Navigation Bar -->
+<nav class="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 ios-blur border-b border-slate-200 dark:border-slate-800">
+<div class="flex items-center justify-between px-4 h-16">
+<button class="flex items-center justify-center p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined">arrow_back_ios_new</span>
+</button>
+<h1 class="text-base font-semibold tracking-tight">Tone Preview</h1>
+<div class="w-10"></div> <!-- Spacer for centering -->
+</div>
+</nav>
+<main class="flex-1 px-4 py-6 space-y-6 pb-40">
+<!-- Campaign Summary Card -->
+<section class="bg-white dark:bg-surface-dark rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-4">
+<div class="w-16 h-16 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden shrink-0">
+<div class="w-full h-full bg-cover bg-center" data-alt="Abstract vibrant gradient pattern representing summer launch" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBHatGPbZyaxRm3NOA_IXhsoZsz6QPeOuy4r_0rkCyjAwVRQtI7VXRWN6UZnkHcTkYrDFptEM3STn9qSLpfSy4OkdDeTiAsrSXI90cbbh4McGFYDkxQIUknGOnZHB9g1Lsk1qebcuHqeq7L77TWdaDh5LZ1HCVYBOIo7x9E5Sd1XSOkFQ12WgWe2KkUPhHjQfqOu3u7ROqanASqHLq8QEmIF9ysIQYAgIVu_Uxx6A6nsGN-sQA7hzAK8xP88c0FJWzF4RCHquQkTFQm')"></div>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-[10px] font-bold text-primary uppercase tracking-wider mb-0.5">Campaign Summary</p>
+<h2 class="text-lg font-bold truncate">Summer Launch 2024</h2>
+<p class="text-sm text-slate-500 dark:text-slate-400 truncate">Target: Gen Z Techies • Brand Awareness</p>
+</div>
+</div>
+</section>
+<!-- AI Generated Header -->
+<div class="flex items-center justify-between px-1">
+<h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">AI Previews</h3>
+<span class="text-[10px] bg-primary/20 text-primary font-bold px-2 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">auto_awesome</span>
+                AI GENERATED
+            </span>
+</div>
+<!-- Preview Stack -->
+<div class="space-y-4">
+<!-- Sample Email Card -->
+<div class="bg-white dark:bg-surface-dark rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col">
+<div class="h-24 bg-slate-100 dark:bg-slate-800/50 relative overflow-hidden">
+<div class="absolute inset-0 bg-cover bg-center opacity-40" data-alt="Minimalist desktop setup with clean workspace" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCu8gVCmM2rJA7lukQQjCyqjVWSqld0oLfF7ENPSwEjnVQganACumqLyObPcVcb42N0kGqOGwrZJAC3-7QEGxoL5EGMfqgpYbnKtFZk0inCJcfYyrphHhpg0XrpiRncEADBC_auvpcRcINzlodcS9wlsa8dFSKTLDSFPEX3xXfrnvD_1MqX1nJsSc2_6nwi_Qk3THXEcrYhAvFROalaaS53CroNC2rGBX4K3jkNjXijl_-9GnKRMLiCbn-YFDOxPH0S8eklgeq8hQNR')"></div>
+<div class="absolute top-3 left-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-lg">mail</span>
+<span class="text-xs font-semibold text-slate-600 dark:text-slate-300">Sample Email</span>
+</div>
+</div>
+<div class="p-4">
+<p class="text-sm font-bold mb-1">Subject: Level up your workflow...</p>
+<p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed italic">
+                        "Hi there, ready to transform how you work? MiCA is here to help you automate the boring stuff. Join the future today."
+                    </p>
+</div>
+</div>
+<!-- Sample Social Post -->
+<div class="bg-white dark:bg-surface-dark rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col">
+<div class="aspect-video bg-slate-100 dark:bg-slate-800/50 relative overflow-hidden">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="Vibrant 3D abstract shapes with neon lighting" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDPdg_7XZy6SKZq8DvH1MfuPtmDxTKMeMpfGDq0yWYR9OVF8mguOFWFYdqt2y8nVfG4mEp5VXFZsfwBFgG8LrnugXnsEo8rX__bGqbUqHaTOyWVVKP4rjYb9_99yqgoS-gwskk4QTkBWC0oyMyWPwMiJU7eqYbi0I8fgk-bkMoY3tMzWhrFBDIagy3twPJsb2yqfKR0L0fOWULfKWZtPnCL_HXdd9Wb0zRTawTs5PKQKE33nR2ZS3slKDGSS_-Im1fYQbsE3b6myucE')"></div>
+<div class="absolute bottom-3 right-3 bg-white/20 ios-blur px-2 py-1 rounded text-[10px] text-white font-medium uppercase">Social Preview</div>
+</div>
+<div class="p-4">
+<div class="flex items-center gap-2 mb-3">
+<div class="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-[14px]">bolt</span>
+</div>
+<span class="text-xs font-bold">@micahq</span>
+</div>
+<p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                        Stop scrolling. The future of productivity is here. 🚀 <span class="text-primary font-medium">#MiCA #Innovation #GenZTech</span>
+</p>
+</div>
+</div>
+<!-- Tone Analysis Card -->
+<div class="bg-primary/5 dark:bg-primary/10 rounded-xl p-5 border border-primary/20">
+<div class="flex items-center gap-3 mb-3">
+<span class="material-symbols-outlined text-primary">psychology</span>
+<h4 class="text-sm font-bold text-primary">Tone Analysis</h4>
+</div>
+<div class="space-y-3">
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1 bg-primary text-white text-[10px] font-bold rounded-full uppercase">Bold</span>
+<span class="px-3 py-1 bg-primary text-white text-[10px] font-bold rounded-full uppercase">Energetic</span>
+<span class="px-3 py-1 bg-primary text-white text-[10px] font-bold rounded-full uppercase">Concise</span>
+</div>
+<p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                        The content maintains a forward-thinking, high-energy voice specifically tailored to resonate with Gen Z's preference for directness and digital innovation.
+                    </p>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Fixed Actions -->
+<footer class="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-background-dark/95 ios-blur border-t border-slate-200 dark:border-slate-800 p-4 pb-8 space-y-3 z-[60]">
+<!-- Primary Action -->
+<button class="w-full h-14 bg-success text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-success/20 active:scale-[0.98] transition-all">
+            Looks Great — Generate Full Campaign
+            <span class="material-symbols-outlined">trending_flat</span>
+</button>
+<!-- Secondary Actions -->
+<div class="flex gap-3">
+<button class="flex-1 h-12 border border-primary/40 text-primary font-semibold rounded-xl flex items-center justify-center gap-2 active:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined text-[18px]">tune</span>
+                Adjust Tone
+            </button>
+<button class="flex-1 h-12 text-slate-500 dark:text-slate-400 font-semibold rounded-xl flex items-center justify-center gap-2 active:bg-slate-100 dark:active:bg-slate-800 transition-colors">
+                Back to Edit
+            </button>
+</div>
+<!-- iOS Home Indicator Spacing -->
+<div class="h-2"></div>
+</footer>
+</body></html>

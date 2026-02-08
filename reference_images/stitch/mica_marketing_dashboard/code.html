@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>MiCA Marketing Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#5048e5",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#0b0e14",
+                        "surface-dark": "#1a1c23",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
+<!-- Header Section -->
+<header class="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white">
+<span class="material-symbols-outlined">auto_awesome</span>
+</div>
+<div>
+<h1 class="text-base font-bold leading-tight">MiCA Strategy</h1>
+<p class="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Summer Launch 2024</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-800">
+<span class="material-symbols-outlined text-xl">notifications</span>
+</button>
+<div class="w-10 h-10 rounded-full bg-cover bg-center border border-slate-300 dark:border-slate-700" data-alt="User profile photo of a marketing manager" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuA3QlDnpwntkQ7-31EWfkDQiHYsiI9nMIiP2ym_7BrauteBOna3GAQ1uTxNqktMoYE2yllIr3pjZoB9X-TmJkKeJA9aUgMSIPwxZEkmhgdV9JxMJhm7OkzHe_Nf4FddRZicGDixve4SHy8Er7gxFaQ3kbX069WmAB95HFyz6FZZ-yAshSDHCyOCsQ8bc1jsadqKB3ZQaD4PenGahE0tKlWcjteIoNaZWlc_GD5f2FD5jhX6czv4h1BdathHqf2qkgov10cImZZ6U6jJ')"></div>
+</div>
+</div>
+</header>
+<main class="p-4 space-y-6 pb-24">
+<!-- KPI Stats Grid -->
+<section class="grid grid-cols-2 gap-3">
+<div class="bg-white dark:bg-surface-dark p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-2 text-primary mb-1">
+<span class="material-symbols-outlined text-lg">calendar_today</span>
+<span class="text-xs font-semibold">Duration</span>
+</div>
+<div class="text-xl font-bold">28 Days</div>
+</div>
+<div class="bg-white dark:bg-surface-dark p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-2 text-emerald-500 mb-1">
+<span class="material-symbols-outlined text-lg">layers</span>
+<span class="text-xs font-semibold">Channels</span>
+</div>
+<div class="text-xl font-bold">5 Platforms</div>
+</div>
+<div class="bg-white dark:bg-surface-dark p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-2 text-amber-500 mb-1">
+<span class="material-symbols-outlined text-lg">smart_toy</span>
+<span class="text-xs font-semibold">Assets</span>
+</div>
+<div class="text-xl font-bold">12 Total</div>
+</div>
+<div class="bg-white dark:bg-surface-dark p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-2 text-rose-500 mb-1">
+<span class="material-symbols-outlined text-lg">payments</span>
+<span class="text-xs font-semibold">Budget</span>
+</div>
+<div class="text-xl font-bold">$2,400</div>
+</div>
+</section>
+<!-- HeyGen Video Player Section -->
+<section>
+<div class="flex items-center justify-between mb-3">
+<h2 class="text-lg font-bold">Main Campaign Asset</h2>
+<span class="text-xs text-primary font-bold px-2 py-1 bg-primary/10 rounded-full">AI Generated</span>
+</div>
+<div class="relative aspect-[9/16] max-h-[500px] w-full mx-auto rounded-3xl overflow-hidden border-8 border-slate-800 shadow-2xl bg-black group">
+<div class="absolute inset-0 bg-cover bg-center opacity-80" data-alt="AI avatar spokesperson video preview" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBCJFtf9b1QZgDCvAMVw5Hl2WivKS6qbMW9dxT4EENmYMEFkEjgkH-_C3mTE-NbQo43VljEB0rX6y4jiKVYhlE36uP3cYyzCEpgHZEWP_lzTqGqc77_hrIDn3yEHPbv48n_mePv_Gj1B6-ZWrHru517GOCTXBtsVVDwVhIzbOvJUr_KKY2zGMc2GK77Qcf1VC-_HmsTEll53QG4Ry9RMzQy7j8l7-W4NOM5mTFXhysv1ZYKbFv-TzXkGdKwERwgIYEFTi2TzmSTMKcH')"></div>
+<!-- Video UI Overlays -->
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 flex flex-col justify-between p-6">
+<div class="flex justify-end">
+<button class="bg-white/10 backdrop-blur-md p-2 rounded-full text-white">
+<span class="material-symbols-outlined">share</span>
+</button>
+</div>
+<div class="space-y-4">
+<div class="flex justify-center">
+<button class="w-16 h-16 rounded-full bg-primary/90 text-white flex items-center justify-center shadow-lg transform active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-4xl leading-none">play_arrow</span>
+</button>
+</div>
+<!-- Progress Bar -->
+<div class="space-y-1">
+<div class="h-1 w-full bg-white/20 rounded-full overflow-hidden">
+<div class="h-full bg-primary w-1/3"></div>
+</div>
+<div class="flex justify-between text-[10px] text-white/70 font-medium">
+<span>0:37</span>
+<span>2:23</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-4 flex gap-2">
+<button class="flex-1 bg-primary text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-xl">rocket_launch</span>
+                    Launch Now
+                </button>
+<button class="w-14 h-14 bg-slate-200 dark:bg-surface-dark border border-slate-300 dark:border-slate-800 rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined">download</span>
+</button>
+</div>
+</section>
+<!-- 4-Week Timeline -->
+<section>
+<div class="flex items-center justify-between mb-4">
+<h2 class="text-lg font-bold">Campaign Timeline</h2>
+<button class="text-primary text-sm font-semibold">View All</button>
+</div>
+<div class="space-y-4">
+<!-- Week 1 -->
+<div class="flex gap-4">
+<div class="flex flex-col items-center">
+<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold ring-4 ring-primary/20">1</div>
+<div class="w-0.5 h-full bg-slate-200 dark:bg-slate-800 my-1"></div>
+</div>
+<div class="flex-1 bg-white dark:bg-surface-dark p-4 rounded-xl border border-slate-200 dark:border-slate-800 mb-2">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-bold text-sm">Awareness Phase</h3>
+<span class="text-[10px] bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full font-bold">ACTIVE</span>
+</div>
+<p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Initialize social media blast and email warm-ups.</p>
+<div class="flex gap-2">
+<span class="w-6 h-6 rounded bg-blue-500/20 text-blue-500 flex items-center justify-center">
+<span class="material-symbols-outlined text-sm">mail</span>
+</span>
+<span class="w-6 h-6 rounded bg-pink-500/20 text-pink-500 flex items-center justify-center">
+<span class="material-symbols-outlined text-sm">share</span>
+</span>
+</div>
+</div>
+</div>
+<!-- Week 2 -->
+<div class="flex gap-4">
+<div class="flex flex-col items-center">
+<div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-500 text-xs font-bold">2</div>
+<div class="w-0.5 h-full bg-slate-200 dark:bg-slate-800 my-1"></div>
+</div>
+<div class="flex-1 bg-white/50 dark:bg-surface-dark/50 p-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-bold text-sm">Engagement Boost</h3>
+<span class="text-[10px] bg-slate-500/10 text-slate-500 px-2 py-0.5 rounded-full font-bold">PENDING</span>
+</div>
+<p class="text-xs text-slate-500 dark:text-slate-400 mb-3">WhatsApp sequence deployment for early-birds.</p>
+<div class="flex gap-2">
+<span class="w-6 h-6 rounded bg-emerald-500/20 text-emerald-500 flex items-center justify-center">
+<span class="material-symbols-outlined text-sm">chat</span>
+</span>
+</div>
+</div>
+</div>
+<!-- Week 3 & 4 Mini markers -->
+<div class="flex gap-4 opacity-50">
+<div class="w-8 flex justify-center">
+<div class="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-700"></div>
+</div>
+<div class="text-xs font-medium text-slate-500">Conversion &amp; Retargeting Weeks</div>
+</div>
+</div>
+</section>
+<!-- Marketing Plan Summary -->
+<section class="bg-primary/5 dark:bg-primary/10 border border-primary/20 p-5 rounded-2xl">
+<h2 class="text-lg font-bold mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">description</span>
+                AI Strategic Insight
+            </h2>
+<div class="space-y-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+<p>
+<span class="font-bold text-slate-900 dark:text-white">Core Objective:</span> Reach 50k potential leads through cross-platform synergy.
+                </p>
+<p>
+                    The MiCA engine has determined that starting with <span class="text-primary font-semibold">educational social snippets</span> followed by a <span class="text-primary font-semibold">personalized WhatsApp follow-up</span> yields a 34% higher conversion rate for this specific industry.
+                </p>
+<button class="text-primary font-bold flex items-center gap-1 mt-2">
+                    Read Full Plan <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation -->
+<nav class="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-background-dark/90 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 px-6 py-3 pb-6 flex justify-between items-center z-50">
+<button class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined font-variation-fill">grid_view</span>
+<span class="text-[10px] font-bold uppercase">Overview</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-400">
+<span class="material-symbols-outlined">folder_open</span>
+<span class="text-[10px] font-bold uppercase">Assets</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-400">
+<span class="material-symbols-outlined">insights</span>
+<span class="text-[10px] font-bold uppercase">Stats</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-400">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-[10px] font-bold uppercase">Settings</span>
+</button>
+</nav>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .font-variation-fill {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+</body></html>
