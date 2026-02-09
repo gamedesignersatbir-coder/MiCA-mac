@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { Button } from '../../components/ui/Button';
 import { supabase } from '../../lib/supabase';
 import {
-    LayoutDashboard, Mail, MessageSquare, Instagram, Calendar,
-    ArrowUpRight, Users, Target, BarChart2, Download
+    LayoutDashboard, Mail, MessageSquare, Instagram,
+    ArrowLeft, Video, Mic, CheckCircle2
 } from 'lucide-react';
+import { VideoPlayer, SocialPostCard } from '../../components/DashboardComponents';
+import { generateImage } from '../../services/imageService';
+import { buildImagePrompt } from '../../services/imagePromptBuilder';
 
 interface Campaign {
     id: string;
@@ -14,6 +17,12 @@ interface Campaign {
     status: string;
     marketing_plan: any;
     recommended_channels: string[];
+    video_url?: string;
+    video_status?: string;
+    video_script?: string;
+    target_audience: string;
+    launch_date?: string;
+    budget: number;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any;
 }
@@ -24,12 +33,14 @@ interface EmailTemplate {
     pre_header: string;
     body: string;
     scheduled_day: number;
+    cta_text: string;
 }
 
 interface WhatsAppMessage {
     id: string;
     message_text: string;
     scheduled_day: number;
+    message_type: string;
 }
 
 interface SocialPost {
@@ -39,16 +50,20 @@ interface SocialPost {
     scheduled_day: number;
     image_suggestion: string;
     post_type: string;
+    image_url?: string;
+    post_order?: number;
 }
 
 export const Dashboard: React.FC = () => {
     const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('overview');
     const [campaign, setCampaign] = useState<Campaign | null>(null);
     const [emails, setEmails] = useState<EmailTemplate[]>([]);
     const [whatsappMessages, setWhatsappMessages] = useState<WhatsAppMessage[]>([]);
     const [socialPosts, setSocialPosts] = useState<SocialPost[]>([]);
     const [loading, setLoading] = useState(true);
+    const [generatingImageId, setGeneratingImageId] = useState<string | null>(null);
 
     useEffect(() => {
         if (id) fetchData();
@@ -98,256 +113,348 @@ export const Dashboard: React.FC = () => {
         }
     };
 
-    if (loading) return <Layout><div className="flex h-screen justify-center items-center">Loading Dashboard...</div></Layout>;
-    if (!campaign) return <Layout><div>Campaign not found</div></Layout>;
+    const handleGenerateImage = async (postId: string, suggestion: string) => {
+        if (!campaign) return;
+        setGeneratingImageId(postId);
+        try {
+            const prompt = buildImagePrompt(suggestion, campaign.product_name, campaign.marketing_plan?.tone || 'Professional');
+            const imageUrl = await generateImage({ prompt });
+
+            // Save to DB
+            await supabase.from('social_posts').update({ image_url: imageUrl }).eq('id', postId);
+            await supabase.from('generated_images').insert({
+                campaign_id: campaign.id,
+                image_url: imageUrl,
+                image_prompt: prompt,
+                image_type: 'social'
+            });
+
+            // Update local state
+            setSocialPosts(prev => prev.map(p => p.id === postId ? { ...p, image_url: imageUrl } : p));
+
+        } catch (error) {
+            console.error("Failed to regenerate image:", error);
+            alert("Failed to generate image. Please try again.");
+        } finally {
+            setGeneratingImageId(null);
+        }
+    };
+
+    if (loading) return <Layout><div className="flex h-screen justify-center items-center text-white">Loading Dashboard...</div></Layout>;
+    if (!campaign) return <Layout><div className="text-white p-8">Campaign not found</div></Layout>;
+
+    const renderTimeline = () => {
+        // Simple visual timeline of dots
+        const days = Array.from({ length: 28 }, (_, i) => i + 1);
+
+        return (
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6 overflow-x-auto">
+                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">28-Day Roadmap</h3>
+                <div className="flex items-center justify-between min-w-[800px] relative">
+                    {/* Line */}
+                    <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-gray-800 -z-0"></div>
+
+                    {days.map(day => {
+                        const hasEmail = emails.some(e => e.scheduled_day === day);
+                        const hasWhatsapp = whatsappMessages.some(w => w.scheduled_day === day);
+                        const hasSocial = socialPosts.some(s => s.scheduled_day === day);
+
+                        let dotColor = "bg-gray-800";
+                        if (hasEmail) dotColor = "bg-blue-500";
+                        else if (hasWhatsapp) dotColor = "bg-green-500";
+                        else if (hasSocial) dotColor = "bg-pink-500";
+
+                        const isActionDay = hasEmail || hasWhatsapp || hasSocial;
+
+                        return (
+                            <div key={day} className="relative z-10 flex flex-col items-center gap-2 group">
+                                <div className={`w-3 h-3 rounded-full ${dotColor} ${isActionDay ? 'ring-4 ring-gray-900' : ''}`}></div>
+                                <span className={`text-[10px] ${isActionDay ? 'text-white font-bold' : 'text-gray-600'}`}>{day}</span>
+
+                                {isActionDay && (
+                                    <div className="absolute bottom-full mb-2 hidden group-hover:block bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-20">
+                                        {hasEmail && "Email "}
+                                        {hasWhatsapp && "WhatsApp "}
+                                        {hasSocial && "Post"}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
 
     const renderOverview = () => (
         <div className="space-y-6 animate-in fade-in">
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-gray-900 border border-gray-800 p-5 rounded-xl">
-                    <div className="flex items-center gap-3 text-gray-400 mb-2">
-                        <Target className="w-5 h-5 text-indigo-400" />
-                        <span className="text-sm font-medium">Primary Goal</span>
-                    </div>
-                    <div className="text-xl font-semibold text-white">
-                        {campaign.marketing_plan?.expected_outcomes?.reach || "Maximize Reach"}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">Expected Reach</div>
-                </div>
-                <div className="bg-gray-900 border border-gray-800 p-5 rounded-xl">
-                    <div className="flex items-center gap-3 text-gray-400 mb-2">
-                        <Users className="w-5 h-5 text-emerald-400" />
-                        <span className="text-sm font-medium">Target Audience</span>
-                    </div>
-                    <div className="text-lg font-semibold text-white truncate">
-                        {campaign.target_audience}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">Persona Segment</div>
-                </div>
-                <div className="bg-gray-900 border border-gray-800 p-5 rounded-xl">
-                    <div className="flex items-center gap-3 text-gray-400 mb-2">
-                        <Calendar className="w-5 h-5 text-purple-400" />
-                        <span className="text-sm font-medium">Duration</span>
-                    </div>
-                    <div className="text-xl font-semibold text-white">4 Weeks</div>
-                    <div className="text-xs text-gray-500 mt-1">Launch: {campaign.launch_date}</div>
-                </div>
-            </div>
+            {renderTimeline()}
 
             {/* Strategy Summary */}
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
                 <h3 className="text-lg font-semibold mb-4 text-white flex items-center gap-2">
-                    <BarChart2 className="w-5 h-5 text-indigo-400" /> Strategy Summary
+                    <LayoutDashboard className="w-5 h-5 text-indigo-400" /> Strategy Overview
                 </h3>
-                <p className="text-gray-300 leading-relaxed mb-6">
-                    {campaign.marketing_plan?.strategy_summary || "Strategy failed to load."}
-                </p>
 
-                <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Weekly Focus</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {campaign.marketing_plan?.weekly_plan?.map((week: any, idx: number) => (
-                        <div key={idx} className="bg-gray-800/50 p-4 rounded-lg border border-gray-700">
-                            <div className="text-xs text-indigo-400 font-bold mb-1">WEEK {week.week}</div>
-                            <div className="text-white font-medium mb-1">{week.theme}</div>
-                            <div className="text-xs text-gray-500">{week.goal}</div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Executive Summary</h4>
+                        <p className="text-gray-300 leading-relaxed mb-6">
+                            {campaign.marketing_plan?.strategy_summary || "Strategy failed to load."}
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-gray-800/50 p-4 rounded-lg">
+                                <div className="text-xs text-gray-500 uppercase">Target Audience</div>
+                                <div className="text-white font-medium">{campaign.target_audience}</div>
+                            </div>
+                            <div className="bg-gray-800/50 p-4 rounded-lg">
+                                <div className="text-xs text-gray-500 uppercase">Primary Goal</div>
+                                <div className="text-white font-medium">{campaign.marketing_plan?.expected_outcomes?.reach || "Maximize Reach"}</div>
+                            </div>
                         </div>
-                    ))}
+                    </div>
+
+                    <div>
+                        <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Weekly Focus</h4>
+                        <div className="space-y-3">
+                            {campaign.marketing_plan?.weekly_plan?.map((week: any, idx: number) => (
+                                <div key={idx} className="bg-gray-800/30 p-3 rounded-lg border border-gray-700/50 flex gap-4 items-start">
+                                    <div className="bg-indigo-500/20 text-indigo-400 text-xs font-bold px-2 py-1 rounded mt-0.5">W{week.week}</div>
+                                    <div>
+                                        <div className="text-white text-sm font-medium">{week.theme}</div>
+                                        <div className="text-xs text-gray-500">{week.goal}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     );
 
-    const [selectedEmail, setSelectedEmail] = useState<EmailTemplate | null>(null);
-
     const renderEmails = () => (
         <div className="grid gap-4 animate-in fade-in">
             {emails.map((email) => (
-                <div
-                    key={email.id}
-                    onClick={() => setSelectedEmail(email)}
-                    className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-                >
-                    <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                            <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded">Day {email.scheduled_day}</span>
-                            <span className="text-gray-900 font-medium truncate max-w-md">{email.subject}</span>
+                <div key={email.id} className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-200">
+                    <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                        <div>
+                            <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded mr-3">Day {email.scheduled_day}</span>
+                            <span className="text-gray-900 font-semibold">{email.subject}</span>
                         </div>
-                        <Button variant="ghost" size="sm" className="text-gray-500">View</Button>
+                        <Button variant="ghost" size="sm" className="text-gray-500">Copy HTML</Button>
                     </div>
-                    <div className="p-4">
-                        <div className="text-xs text-gray-500 mb-2 uppercase tracking-wide">Preview Text: {email.pre_header}</div>
-                        <div className="text-sm text-gray-600 line-clamp-3" dangerouslySetInnerHTML={{ __html: email.body }} />
+                    <div className="p-6">
+                        <div className="text-xs text-gray-500 mb-4 bg-gray-50 inline-block px-2 py-1 rounded border border-gray-200">
+                            <strong>Preview:</strong> {email.pre_header}
+                        </div>
+                        <div
+                            className="prose prose-sm max-w-none text-gray-600 bg-gray-50/50 p-4 rounded-lg border border-gray-100"
+                            dangerouslySetInnerHTML={{ __html: email.body }}
+                        />
+                        <div className="mt-4 flex justify-end">
+                            <span className="text-xs text-gray-400 italic">CTA: {email.cta_text}</span>
+                        </div>
                     </div>
                 </div>
             ))}
-            {emails.length === 0 && <div className="text-center py-10 text-gray-500">No emails generated.</div>}
-
-            {/* Email Detail Modal */}
-            {selectedEmail && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setSelectedEmail(null)}>
-                    <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
-                        <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex justify-between items-center z-10">
-                            <div>
-                                <h3 className="text-xl font-bold text-gray-900">{selectedEmail.subject}</h3>
-                                <p className="text-sm text-gray-500">Day {selectedEmail.scheduled_day} • {selectedEmail.pre_header}</p>
-                            </div>
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedEmail(null)}>Close</Button>
-                        </div>
-                        <div className="p-8 prose prose-indigo max-w-none text-gray-800">
-                            <div dangerouslySetInnerHTML={{ __html: selectedEmail.body }} />
-                        </div>
-                        <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 flex justify-end">
-                            <Button onClick={() => setSelectedEmail(null)}>Done</Button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 
     const renderWhatsApp = () => (
-        <div className="space-y-4 max-w-2xl mx-auto animate-in fade-in">
+        <div className="space-y-6 max-w-2xl mx-auto animate-in fade-in py-4">
             {whatsappMessages.map((msg) => (
-                <div key={msg.id} className="flex gap-4">
-                    <div className="flex-shrink-0 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                        {msg.scheduled_day}
+                <div key={msg.id} className="relative">
+                    <div className="flex justify-center mb-4">
+                        <span className="bg-gray-800 text-gray-400 text-[10px] px-3 py-1 rounded-full uppercase tracking-wider">
+                            Day {msg.scheduled_day}
+                        </span>
                     </div>
-                    <div className="bg-[#DCF8C6] text-gray-900 p-3 rounded-lg rounded-tl-none shadow-sm text-sm relative">
-                        {msg.message_text}
-                        <div className="text-[10px] text-gray-500 text-right mt-1 opacity-70">
-                            Scheduled: Day {msg.scheduled_day}
+
+                    <div className="flex items-end justify-end">
+                        <div className="bg-[#005c4b] text-white p-3 rounded-lg rounded-tr-none shadow-md max-w-[80%] text-sm leading-relaxed relative">
+                            {msg.message_text}
+                            <div className="text-[10px] text-gray-300 text-right mt-1 flex items-center justify-end gap-1">
+                                <span>10:00 AM</span>
+                                <CheckCircle2 className="w-3 h-3 text-blue-400" />
+                            </div>
                         </div>
+                    </div>
+                    <div className="text-right mt-1 mr-1">
+                        <span className="text-[10px] text-gray-500 uppercase">{msg.message_type}</span>
                     </div>
                 </div>
             ))}
-            {whatsappMessages.length === 0 && <div className="text-center py-10 text-gray-500">No WhatsApp messages generated.</div>}
         </div>
     );
 
     const renderSocial = () => (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in">
-            {socialPosts.map((post) => (
-                <div key={post.id} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-                    <div className="aspect-square bg-gray-800 flex items-center justify-center p-4 text-center border-b border-gray-800">
-                        <span className="text-xs text-gray-500 italic">{post.image_suggestion}</span>
-                    </div>
-                    <div className="p-4">
-                        <div className="flex justify-between items-start mb-2">
-                            <span className="bg-pink-500/10 text-pink-400 text-[10px] font-bold px-2 py-1 rounded">Day {post.scheduled_day}</span>
-                            <span className="text-[10px] text-gray-500 uppercase">{post.post_type?.replace('_', ' ')}</span>
-                        </div>
-                        <p className="text-sm text-gray-300 line-clamp-4 mb-3">{post.caption}</p>
-                        <p className="text-xs text-blue-400">{post.hashtags}</p>
-                    </div>
-                </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in">
+            {socialPosts.filter(p => p.post_type !== 'story').map((post) => (
+                <SocialPostCard
+                    key={post.id}
+                    post={post}
+                    onGenerateImage={handleGenerateImage}
+                    generatingImageId={generatingImageId}
+                />
             ))}
-            {socialPosts.length === 0 && <div className="text-center py-10 text-gray-500">No social posts generated.</div>}
         </div>
     );
 
-    const handleLaunch = async () => {
-        if (!campaign) return;
-        try {
-            const { error } = await supabase
-                .from('campaigns')
-                .update({ status: 'executing' })
-                .eq('id', campaign.id);
-
-            if (error) throw error;
-            setCampaign({ ...campaign, status: 'executing' });
-            alert("Campaign Launched Successfully! 🚀");
-        } catch (error) {
-            console.error("Error launching campaign:", error);
-            alert("Failed to launch campaign.");
+    const renderVideoAd = () => {
+        if (!campaign.recommended_channels.includes('video_ad')) {
+            return (
+                <div className="flex flex-col items-center justify-center p-12 bg-gray-900 rounded-xl border border-gray-800 text-center">
+                    <Video className="w-12 h-12 text-gray-700 mb-4" />
+                    <h3 className="text-white font-medium text-lg mb-2">Video Ads Not Recommended</h3>
+                    <p className="text-gray-400 max-w-md">
+                        Based on your budget of ₹{campaign.budget}, we recommend focusing on organic channels first. Increase budget to ₹25,000+ to unlock video ads.
+                    </p>
+                </div>
+            );
         }
+
+        // Use the same video for now, or a placeholder if we had separate ad generation
+        return (
+            <div className="max-w-md mx-auto">
+                <VideoPlayer
+                    videoUrl={campaign.video_url}
+                    isGenerating={campaign.video_status === 'generating'}
+                    description="This is your main campaign video ad, optimized for Instagram Reels and YouTube Shorts."
+                    script={campaign.video_script}
+                    showScript={true}
+                />
+            </div>
+        );
     };
 
-    const handleExport = () => {
-        window.print();
-        // In Session 3, we can implement PDF generation
-    };
+    const renderVoiceAgent = () => (
+        <div className="flex flex-col items-center justify-center p-12 bg-gray-900 rounded-xl border border-gray-800 text-center mb-8">
+            <div className="w-16 h-16 bg-indigo-500/10 rounded-full flex items-center justify-center mb-6">
+                <Mic className="w-8 h-8 text-indigo-400" />
+            </div>
+            <h3 className="text-white font-medium text-lg mb-2">Voice Agent Setup</h3>
+            <p className="text-gray-400 max-w-md mb-6">
+                Coming in Session 4: Configure an AI voice agent to handle inbound leads from your campaign.
+            </p>
+            <Button variant="outline" disabled>Coming Soon</Button>
+        </div>
+    );
 
     return (
         <Layout>
-            <div className="container mx-auto px-4 py-8">
-                {/* Header */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-                    <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <h1 className="text-3xl font-bold text-white">{campaign.product_name}</h1>
-                            <span className={`text-xs px-2 py-0.5 rounded-full border uppercase tracking-wide font-bold ${campaign.status === 'executing'
-                                ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30'
-                                : 'bg-green-500/20 text-green-400 border-green-500/30'
-                                }`}>
-                                {campaign.status.replace('_', ' ')}
-                            </span>
+            <div className="min-h-screen bg-black text-white">
+                {/* Navbar Area */}
+                <div className="sticky top-0 z-30 bg-black/80 backdrop-blur-md border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <button onClick={() => navigate('/')} className="p-2 hover:bg-gray-800 rounded-full transition-colors text-gray-400">
+                            <ArrowLeft className="w-5 h-5" />
+                        </button>
+                        <div>
+                            <h1 className="text-xl font-bold flex items-center gap-3">
+                                {campaign.product_name}
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full border uppercase tracking-wide font-bold ${campaign.status === 'executing' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-green-500/20 text-green-400 border-green-500/30'
+                                    }`}>
+                                    {campaign.status.replace('_', ' ')}
+                                </span>
+                            </h1>
                         </div>
-                        <p className="text-gray-400 text-sm">Campaign Dashboard</p>
                     </div>
-                    <div className="flex gap-2">
-                        <Button variant="outline" onClick={handleExport} leftIcon={<Download className="w-4 h-4" />}>Export Plan</Button>
-                        {campaign.status !== 'executing' && (
-                            <Button onClick={handleLaunch} leftIcon={<ArrowUpRight className="w-4 h-4" />}>Launch Campaign</Button>
-                        )}
-                    </div>
-                </div>
-
-                {/* Tabs */}
-                <div className="border-b border-gray-800 mb-8 overflow-x-auto">
-                    <div className="flex space-x-6 min-w-max">
-                        <button
-                            onClick={() => setActiveTab('overview')}
-                            className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'overview'
-                                ? 'border-indigo-500 text-indigo-400'
-                                : 'border-transparent text-gray-400 hover:text-gray-300'
-                                }`}
-                        >
-                            <LayoutDashboard className="w-4 h-4" /> Overview
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('emails')}
-                            className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'emails'
-                                ? 'border-blue-500 text-blue-400'
-                                : 'border-transparent text-gray-400 hover:text-gray-300'
-                                }`}
-                        >
-                            <Mail className="w-4 h-4" /> Emails
-                            <span className="bg-gray-800 text-gray-300 text-[10px] px-1.5 py-0.5 rounded-full">{emails.length}</span>
-                        </button>
-                        {campaign.recommended_channels.includes('whatsapp') && (
-                            <button
-                                onClick={() => setActiveTab('whatsapp')}
-                                className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'whatsapp'
-                                    ? 'border-green-500 text-green-400'
-                                    : 'border-transparent text-gray-400 hover:text-gray-300'
-                                    }`}
-                            >
-                                <MessageSquare className="w-4 h-4" /> WhatsApp
-                                <span className="bg-gray-800 text-gray-300 text-[10px] px-1.5 py-0.5 rounded-full">{whatsappMessages.length}</span>
-                            </button>
-                        )}
-                        {campaign.recommended_channels.includes('instagram') && (
-                            <button
-                                onClick={() => setActiveTab('social')}
-                                className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'social'
-                                    ? 'border-pink-500 text-pink-400'
-                                    : 'border-transparent text-gray-400 hover:text-gray-300'
-                                    }`}
-                            >
-                                <Instagram className="w-4 h-4" /> Instagram
-                                <span className="bg-gray-800 text-gray-300 text-[10px] px-1.5 py-0.5 rounded-full">{socialPosts.length}</span>
-                            </button>
-                        )}
+                    <div className="flex items-center gap-4">
+                        <div className="text-sm text-gray-500 mr-4 hidden md:block">
+                            Budget: ₹{campaign.budget.toLocaleString()}
+                        </div>
+                        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-6 shadow-lg shadow-indigo-500/20">
+                            Launch Campaign 🚀
+                        </Button>
                     </div>
                 </div>
 
-                {/* Content */}
-                <div className="min-h-[400px]">
-                    {activeTab === 'overview' && renderOverview()}
-                    {activeTab === 'emails' && renderEmails()}
-                    {activeTab === 'whatsapp' && renderWhatsApp()}
-                    {activeTab === 'social' && renderSocial()}
+                <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] h-[calc(100vh-73px)] overflow-hidden">
+
+                    {/* LEFT PANEL - SCROLLABLE */}
+                    <div className="border-r border-gray-800 bg-gray-950 overflow-y-auto p-6 custom-scrollbar">
+                        <div className="mb-8">
+                            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Campaign Video</h3>
+                            <VideoPlayer
+                                videoUrl={campaign.video_url}
+                                isGenerating={campaign.video_status === 'generating'}
+                                onRetry={() => window.location.reload()}
+                                script={campaign.video_script}
+                            />
+                        </div>
+
+                        <div className="mb-8">
+                            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Summary</h3>
+                            <div className="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                                <p className="text-sm text-gray-300 leading-relaxed">
+                                    {campaign.marketing_plan?.strategy_summary?.slice(0, 200)}...
+                                </p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Assets Generated</h3>
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-sm p-3 bg-gray-900 rounded border border-gray-800">
+                                    <span className="text-gray-400">Emails</span>
+                                    <span className="text-white font-mono">{emails.length}</span>
+                                </div>
+                                <div className="flex justify-between text-sm p-3 bg-gray-900 rounded border border-gray-800">
+                                    <span className="text-gray-400">WhatsApp Msgs</span>
+                                    <span className="text-white font-mono">{whatsappMessages.length}</span>
+                                </div>
+                                <div className="flex justify-between text-sm p-3 bg-gray-900 rounded border border-gray-800">
+                                    <span className="text-gray-400">Social Posts</span>
+                                    <span className="text-white font-mono">{socialPosts.length}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* RIGHT PANEL - MAIN CONTENT */}
+                    <div className="flex flex-col h-full bg-black overflow-hidden">
+
+                        {/* Tabs */}
+                        <div className="flex overflow-x-auto border-b border-gray-800 bg-gray-950/50 px-6">
+                            {[
+                                { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+                                { id: 'emails', label: 'Emails', icon: Mail },
+                                { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare, show: campaign.recommended_channels.includes('whatsapp') },
+                                { id: 'social', label: 'Instagram', icon: Instagram, show: campaign.recommended_channels.includes('instagram') },
+                                { id: 'video_ad', label: 'Video Ad', icon: Video, show: campaign.recommended_channels.includes('video_ad') },
+                                { id: 'voice_agent', label: 'Voice Agent', icon: Mic, show: true } // Always show but maybe disabled logic inside
+                            ].map(tab => {
+                                if (tab.show === false) return null;
+                                const Icon = tab.icon;
+                                return (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setActiveTab(tab.id)}
+                                        className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id
+                                            ? 'border-indigo-500 text-indigo-400 bg-indigo-500/5'
+                                            : 'border-transparent text-gray-400 hover:text-gray-300 hover:bg-gray-900'
+                                            }`}
+                                    >
+                                        <Icon className="w-4 h-4" /> {tab.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* Content Area */}
+                        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                            <div className="max-w-5xl mx-auto">
+                                {activeTab === 'overview' && renderOverview()}
+                                {activeTab === 'emails' && renderEmails()}
+                                {activeTab === 'whatsapp' && renderWhatsApp()}
+                                {activeTab === 'social' && renderSocial()}
+                                {activeTab === 'video_ad' && renderVideoAd()}
+                                {activeTab === 'voice_agent' && renderVoiceAgent()}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </Layout>

@@ -1,10 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Sparkles, CheckCircle2, Circle, AlertCircle, ArrowRight, Loader2 } from 'lucide-react';
+import { Sparkles, CheckCircle2, Circle, AlertCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../../components/ui/Button';
 import { Layout } from '../../components/Layout';
 import { callAI } from '../../services/aiService';
+import { generateImage } from '../../services/imageService';
+import { buildImagePrompt } from '../../services/imagePromptBuilder';
+import { generateVideo } from '../../services/videoService';
+import { HEYGEN_CONFIG } from '../../config/heygen';
 
 interface Campaign {
     id: string;
@@ -23,6 +27,9 @@ const STEPS = [
     { id: 'strategy', label: 'Building marketing strategy...' },
     { id: 'emails', label: 'Creating email templates...' },
     { id: 'content', label: 'Generating social & messaging content...' },
+    { id: 'images', label: 'Creating branded images... (this takes 1-2 mins)' },
+    { id: 'video_script', label: 'Writing video script...' },
+    { id: 'video', label: 'Generating video introduction... (2-5 mins)' },
     { id: 'finalize', label: 'Finalizing campaign plan...' }
 ];
 
@@ -33,7 +40,7 @@ export const GeneratingCampaign: React.FC = () => {
     const [currentStep, setCurrentStep] = useState(0); // 0 to STEPS.length - 1
     const [completedSteps, setCompletedSteps] = useState<string[]>([]);
     const [error, setError] = useState<string | null>(null);
-    const [isGenerating, setIsGenerating] = useState(false);
+    const [progressText, setProgressText] = useState("");
     const generationStartedRef = useRef(false);
 
     useEffect(() => {
@@ -70,7 +77,6 @@ export const GeneratingCampaign: React.FC = () => {
     const startGeneration = async (campaignData: Campaign) => {
         if (generationStartedRef.current) return;
         generationStartedRef.current = true;
-        setIsGenerating(true);
         setError(null);
 
         try {
@@ -92,8 +98,26 @@ export const GeneratingCampaign: React.FC = () => {
             await generateContent(campaignData);
             setCompletedSteps(prev => [...prev, 'content']);
 
-            // 4. Finalize
+            // 4. Image Generation
             setCurrentStep(3);
+            await generateImages(campaignData);
+            setCompletedSteps(prev => [...prev, 'images']);
+
+            // 5. Video Script
+            setCurrentStep(4);
+            const script = await generateVideoScript(campaignData, strategy);
+            setCompletedSteps(prev => [...prev, 'video_script']);
+
+            // 6. Video Generation
+            setCurrentStep(5);
+            // Don't await video generation fully if it takes too long, 
+            // but for now we'll await it as per requirements with a timeout handling in service?
+            // The service waits for completion. We should probably proceed if it fails or use fallback.
+            await generateCampaignVideo(campaignData, script);
+            setCompletedSteps(prev => [...prev, 'video']);
+
+            // 7. Finalize
+            setCurrentStep(6);
             await finalizeCampaign(campaignData.id, strategy);
             setCompletedSteps(prev => [...prev, 'finalize']);
 
@@ -105,7 +129,6 @@ export const GeneratingCampaign: React.FC = () => {
         } catch (err: any) {
             console.error("Generation Sequence Error:", err);
             setError(err.message || "An error occurred during generation. Please try again.");
-            setIsGenerating(false);
             generationStartedRef.current = false; // Allow retry
         }
     };
@@ -183,10 +206,11 @@ Rules:
     const generateContent = async (campaignData: Campaign) => {
         // WhatsApp Generation
         if (campaignData.recommended_channels.includes('whatsapp')) {
-            const waPrompt = `Generate 8 WhatsApp messages for:
+            const waPrompt = `Generate 12 WhatsApp messages for a 4-week campaign:
 PRODUCT: ${campaignData.product_name}
 TONE: ${campaignData.tone}
-Output JSON: { "whatsapp_messages": [{ "message_order": 1, "message_text": "string", "message_type": "string", "scheduled_day": 1 }] }`;
+Output JSON: { "whatsapp_messages": [{ "message_order": 1, "message_text": "string", "message_type": "string", "scheduled_day": 1 }] }
+Rule: Distribute messages evenly across days 1 to 28 (e.g., Day 1, 3, 7, 10, 14, 17, 21, 24, 28).`;
 
             const waResponse = await callAI({
                 systemPrompt: "You are a WhatsApp marketing expert. Return valid JSON.",
@@ -207,10 +231,11 @@ Output JSON: { "whatsapp_messages": [{ "message_order": 1, "message_text": "stri
 
         // Social Media Generation
         if (campaignData.recommended_channels.includes('instagram')) {
-            const socialPrompt = `Generate 10 Instagram posts for:
+            const socialPrompt = `Generate 15 Instagram posts for a 4-week campaign:
 PRODUCT: ${campaignData.product_name}
 TONE: ${campaignData.tone}
-Output JSON: { "social_posts": [{ "post_order": 1, "caption": "string", "hashtags": "string", "scheduled_day": 1, "image_suggestion": "string" }] }`;
+Output JSON: { "social_posts": [{ "post_order": 1, "caption": "string", "hashtags": "string", "scheduled_day": 1, "image_suggestion": "string" }] }
+Rule: Distribute posts evenly across days 1 to 28.`;
 
             const socialResponse = await callAI({
                 systemPrompt: "You are an Instagram expert. Return valid JSON.",
@@ -231,10 +256,123 @@ Output JSON: { "social_posts": [{ "post_order": 1, "caption": "string", "hashtag
         }
     };
 
-    // --- API CALL 4: FINALIZE ---
-    const finalizeCampaign = async (campaignId: string, strategy: any) => {
-        // Optional: Could generate executive summary here. 
-        // For now, simple status update.
+    // --- API CALL 4: IMAGES ---
+    const generateImages = async (campaignData: Campaign) => {
+        if (!campaignData.recommended_channels.includes('instagram')) return;
+
+        // Fetch posts that need images
+        const { data: posts } = await supabase
+            .from('social_posts')
+            .select('*')
+            .eq('campaign_id', campaignData.id)
+            .eq('platform', 'instagram')
+            .order('scheduled_day', { ascending: true });
+
+        if (!posts || posts.length === 0) return;
+
+        let completed = 0;
+        const total = posts.length;
+
+        for (const post of posts) {
+            if (!post.image_suggestion) continue;
+
+            completed++;
+            setProgressText(`Generating image ${completed} of ${total}...`);
+
+            try {
+                const prompt = buildImagePrompt(post.image_suggestion, campaignData.product_name, campaignData.tone);
+                const imageUrl = await generateImage({ prompt });
+
+                // Save to generated_images
+                await supabase.from('generated_images').insert({
+                    campaign_id: campaignData.id,
+                    image_url: imageUrl,
+                    image_prompt: prompt,
+                    image_order: post.post_order,
+                    image_type: 'social'
+                });
+
+                // Update social post
+                await supabase.from('social_posts').update({ image_url: imageUrl }).eq('id', post.id);
+            } catch (err) {
+                console.error(`Failed to generate image for post ${post.id}`, err);
+                // Continue to next image even if one fails
+            }
+        }
+        setProgressText("");
+    };
+
+    // --- API CALL 5: VIDEO SCRIPT ---
+    const generateVideoScript = async (campaignData: Campaign, strategy: any) => {
+        const prompt = `CONTEXT:
+PRODUCT: ${campaignData.product_name}
+STRATEGY SUMMARY: ${strategy.strategy_summary}
+CHANNELS: ${campaignData.recommended_channels.join(', ')}
+
+Please write the video script based on the system instructions.`;
+
+        const systemPrompt = `You are MiCA's video scriptwriter. Write a 60-second video script for an AI avatar spokesperson to present a marketing campaign summary.
+
+The avatar will be speaking directly to the business owner, presenting their campaign strategy in an encouraging, professional tone.
+
+Respond in valid JSON only.
+
+Response format:
+{
+  "script": "The complete spoken script. Write in natural, conversational spoken English. NOT formal report language. Include natural pauses indicated by '...' where appropriate. Must be 120-150 words (60 seconds at normal speaking pace). Address the viewer directly as 'you' and 'your'."
+}
+
+Rules:
+- Start with a warm greeting and the product name
+- Briefly describe the campaign approach (1-2 sentences)
+- Highlight the 3 most important tactics across the 4 weeks
+- Mention the channels being used
+- End with an encouraging, motivational closing
+- Keep it under 150 words (CRITICAL — longer scripts = longer/expensive videos)
+- Speak naturally — contractions, simple words, like a friendly marketing consultant
+- Reference Indian context naturally if the product is India-focused
+- Do NOT use any visual directions or camera cues — this is audio/speech only`;
+
+        const response = await callAI({ systemPrompt, userPrompt: prompt, temperature: 0.7 });
+        const scriptJson = JSON.parse(response.replace(/```json\n?|\n?```/g, '').trim());
+
+        await supabase.from('campaigns').update({ video_script: scriptJson.script }).eq('id', campaignData.id);
+        return scriptJson.script;
+    };
+
+    // --- API CALL 6: VIDEO GENERATION ---
+    const generateCampaignVideo = async (campaignData: Campaign, script: string) => {
+        // HeyGen Fallback Logic
+        if (!HEYGEN_CONFIG.API_ENABLED) {
+            await supabase.from('campaigns').update({
+                video_url: HEYGEN_CONFIG.FALLBACK_VIDEO_URL,
+                video_status: 'fallback'
+            }).eq('id', campaignData.id);
+            return;
+        }
+
+        try {
+            await supabase.from('campaigns').update({ video_status: 'generating' }).eq('id', campaignData.id);
+
+            const videoUrl = await generateVideo({ script });
+
+            await supabase.from('campaigns').update({
+                video_url: videoUrl,
+                video_status: 'completed'
+            }).eq('id', campaignData.id);
+
+        } catch (err) {
+            console.error("Video Generation Failed:", err);
+            // Fallback on error
+            await supabase.from('campaigns').update({
+                video_url: HEYGEN_CONFIG.FALLBACK_VIDEO_URL, // Use fallback if real gen fails
+                video_status: 'failed'
+            }).eq('id', campaignData.id);
+        }
+    };
+
+    // --- API CALL 7: FINALIZE ---
+    const finalizeCampaign = async (campaignId: string, _strategy: any) => {
         await supabase.from('campaigns').update({ status: 'plan_ready' }).eq('id', campaignId);
     };
 
@@ -261,7 +399,7 @@ Output JSON: { "social_posts": [{ "post_order": 1, "caption": "string", "hashtag
                     </div>
                     <h1 className="text-3xl font-bold mb-3">Creating Your Campaign</h1>
                     <p className="text-gray-400 max-w-lg mx-auto">
-                        MiCA is analyzing your product, crafting emails, and writing content. This usually takes about 60-90 seconds.
+                        MiCA is designing your assets, generating images, and producing your strategy video.
                     </p>
                 </div>
 
@@ -270,7 +408,7 @@ Output JSON: { "social_posts": [{ "post_order": 1, "caption": "string", "hashtag
                         {STEPS.map((step, index) => {
                             const isCompleted = completedSteps.includes(step.id);
                             const isCurrent = currentStep === index && !error;
-                            const isPending = !isCompleted && !isCurrent;
+                            // const isPending = !isCompleted && !isCurrent;
 
                             return (
                                 <div key={step.id} className="flex items-center gap-4 transition-all duration-500">
@@ -283,11 +421,14 @@ Output JSON: { "social_posts": [{ "post_order": 1, "caption": "string", "hashtag
                                             <Circle className="w-6 h-6 text-gray-700" />
                                         )}
                                     </div>
-                                    <div className={`text-sm font-medium ${isCompleted ? 'text-gray-300' :
+                                    <div className={`text-sm font-medium flex-1 ${isCompleted ? 'text-gray-300' :
                                         isCurrent ? 'text-white' :
                                             'text-gray-600'
                                         }`}>
                                         {step.label}
+                                        {isCurrent && progressText && step.id === 'images' && (
+                                            <div className="text-xs text-indigo-400 mt-1">{progressText}</div>
+                                        )}
                                     </div>
                                 </div>
                             );

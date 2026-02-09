@@ -3,15 +3,28 @@ import { Link } from 'react-router-dom';
 import { FileText, Sparkles, Rocket, Mail, MessageCircle, Instagram, Phone, Video, BarChart2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Layout } from '../components/Layout';
+import { LANDING_VIDEOS } from '../config/landingVideos';
 
 export const LandingPage: React.FC = () => {
     return (
         <Layout>
             {/* Hero Section */}
-            <section className="relative h-[80vh] flex items-center justify-center overflow-hidden">
-                {/* VIDEO_PLACEHOLDER: Replace src with HeyGen hero video URL when available */}
-                <div className="absolute inset-0 bg-gradient-to-r from-[#1E3A5F] to-[#0F172A] z-0">
-                    {/* <video autoPlay loop muted playsInline className="absolute w-full h-full object-cover opacity-30"></video> */}
+            <section className="relative min-h-screen flex items-center justify-center py-20 overflow-hidden">
+                <div className="absolute inset-0 z-0">
+                    {LANDING_VIDEOS.HERO_BACKGROUND && !LANDING_VIDEOS.HERO_BACKGROUND.includes('YOUR_') ? (
+                        <video
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            poster={LANDING_VIDEOS.HERO_POSTER}
+                            className="w-full h-full object-cover"
+                        >
+                            <source src={LANDING_VIDEOS.HERO_BACKGROUND} type="video/mp4" />
+                        </video>
+                    ) : (
+                        <div className="w-full h-full bg-gradient-to-r from-[#1E3A5F] to-[#0F172A]"></div>
+                    )}
                     <div className="absolute inset-0 bg-black/60"></div>
                 </div>
 
@@ -22,11 +35,34 @@ export const LandingPage: React.FC = () => {
                     <p className="text-xl md:text-2xl text-gray-300 mb-10 max-w-2xl mx-auto leading-relaxed">
                         Give us your product details. Get a complete 4-week marketing campaign — emails, WhatsApp, social media, voice agents, and video ads — generated and executed automatically.
                     </p>
-                    <Link to="/create-campaign">
-                        <Button size="lg" className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 text-lg rounded-full shadow-lg shadow-emerald-500/20 transition-all transform hover:scale-105">
-                            Create Your Campaign →
-                        </Button>
-                    </Link>
+                    <div className="flex flex-col items-center gap-12">
+                        <Link to="/create-campaign">
+                            <Button size="lg" className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 text-lg rounded-full shadow-lg shadow-emerald-500/20 transition-all transform hover:scale-105">
+                                Create Your Campaign →
+                            </Button>
+                        </Link>
+
+                        {/* Demo Video - Moved to Hero */}
+                        <div className="mx-auto max-w-[280px] aspect-[9/16] bg-gray-800 rounded-2xl overflow-hidden border-4 border-gray-700/50 shadow-2xl relative group animate-in slide-in-from-bottom-5 duration-1000">
+                            {LANDING_VIDEOS.DEMO_PORTRAIT && !LANDING_VIDEOS.DEMO_PORTRAIT.includes('YOUR_') ? (
+                                <video
+                                    controls
+                                    playsInline
+                                    poster={LANDING_VIDEOS.DEMO_POSTER}
+                                    className="w-full h-full object-cover"
+                                >
+                                    <source src={LANDING_VIDEOS.DEMO_PORTRAIT} type="video/mp4" />
+                                </video>
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                                    <div className="text-center p-6">
+                                        <Video size={36} className="mx-auto text-gray-600 mb-4" />
+                                        <p className="text-gray-500 text-xs">Demo Video</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -48,8 +84,23 @@ export const LandingPage: React.FC = () => {
 
                         {/* Step 2 */}
                         <div className="relative bg-gray-800/50 p-8 rounded-2xl border border-gray-700 hover:border-purple-500 transition-colors overflow-hidden group">
-                            {/* VIDEO_PLACEHOLDER: Replace src with HeyGen step2 video URL */}
-                            <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <div className="absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                                {LANDING_VIDEOS.CARD_BACKGROUND && !LANDING_VIDEOS.CARD_BACKGROUND.includes('YOUR_') ? (
+                                    <video
+                                        autoPlay
+                                        loop
+                                        muted
+                                        playsInline
+                                        className="w-full h-full object-cover"
+                                    >
+                                        <source src={LANDING_VIDEOS.CARD_BACKGROUND} type="video/mp4" />
+                                    </video>
+                                ) : (
+                                    <div className="w-full h-full bg-gradient-to-br from-purple-900/40 to-transparent"></div>
+                                )}
+                                <div className="absolute inset-0 bg-black/70"></div>
+                            </div>
+
                             <div className="relative z-10">
                                 <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center mb-6 text-purple-400">
                                     <Sparkles size={24} />
@@ -89,11 +140,7 @@ export const LandingPage: React.FC = () => {
                     </div>
 
                     <div className="mt-20 text-center">
-                        {/* VIDEO_PLACEHOLDER: Replace src with HeyGen demo video URL */}
-                        <div className="mx-auto max-w-2xl aspect-video bg-gray-800 rounded-2xl flex items-center justify-center border border-gray-700 shadow-2xl">
-                            <span className="text-gray-500 flex items-center gap-2"><Video size={20} /> Watch MiCA in Action</span>
-                        </div>
-                        <p className="mt-4 text-gray-400 text-sm">Watch MiCA create a campaign in real-time</p>
+                        <p className="text-gray-400 text-sm">Watch MiCA create a campaign in real-time</p>
                     </div>
                 </div>
             </section>
