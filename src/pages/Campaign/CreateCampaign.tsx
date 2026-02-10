@@ -8,6 +8,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Layout } from '../../components/Layout';
 
+import { DEMO_MODE_ENABLED, DEMO_CAMPAIGN } from '../../data/demoData';
+
 export const CreateCampaign: React.FC = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -65,6 +67,14 @@ export const CreateCampaign: React.FC = () => {
         e.preventDefault();
         setLoading(true);
         setError(null);
+
+        // DEMO MODE BYPASS
+        if (DEMO_MODE_ENABLED()) {
+            setTimeout(() => {
+                navigate(`/campaign/${DEMO_CAMPAIGN.id}/tone-preview`);
+            }, 1500); // Simulate processing delay
+            return;
+        }
 
         // Basic Validation
         const launchDateObj = new Date(formData.launchDate);

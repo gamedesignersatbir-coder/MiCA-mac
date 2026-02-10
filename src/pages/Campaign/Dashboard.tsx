@@ -14,6 +14,7 @@ import { ExecutionLog } from '../../components/Dashboard/ExecutionLog';
 import { generateImage } from '../../services/imageService';
 import { buildImagePrompt } from '../../services/imagePromptBuilder';
 import { pauseCampaign, resumeCampaign, triggerWebhook } from '../../services/executionService';
+import { DEMO_MODE_ENABLED, DEMO_CAMPAIGN } from '../../data/demoData';
 
 interface Campaign {
     id: string;
@@ -80,6 +81,27 @@ export const Dashboard: React.FC = () => {
     const fetchData = async () => {
         try {
             if (!id) return;
+
+            // DEMO MODE CHECK
+            if (DEMO_MODE_ENABLED()) {
+                setCampaign(DEMO_CAMPAIGN as any);
+
+                setRecipientCount(1250); // Hardcoded demo count
+                setEmails(DEMO_CAMPAIGN.email_templates as any[]);
+                setWhatsappMessages(DEMO_CAMPAIGN.whatsapp_messages as any[]);
+                setSocialPosts(DEMO_CAMPAIGN.social_posts as any[]);
+
+                // Set initial tab based on demo status
+                const currentStatus = DEMO_CAMPAIGN.status;
+                if (currentStatus === 'executing' || currentStatus === 'paused') {
+                    setActiveTab('campaign_live');
+                } else {
+                    setActiveTab('overview');
+                }
+                setLoading(false);
+                return;
+            }
+
             // Fetch Campaign
             const { data: campaignData, error: campaignError } = await supabase
                 .from('campaigns')
@@ -198,8 +220,35 @@ export const Dashboard: React.FC = () => {
         }
     };
 
-    if (loading) return <Layout><div className="flex h-screen justify-center items-center text-white">Loading Dashboard...</div></Layout>;
-    if (!campaign) return <Layout><div className="text-white p-8">Campaign not found</div></Layout>;
+    if (loading) return (
+        <Layout>
+            <div className="min-h-screen bg-black text-white">
+                <div className="border-b border-gray-800 px-6 py-4">
+                    <div className="h-8 w-64 bg-gray-900 rounded animate-pulse"></div>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] h-[calc(100vh-73px)]">
+                    <div className="border-r border-gray-800 bg-gray-950 p-6 space-y-8">
+                        <div className="aspect-[9/16] bg-gray-900 rounded-2xl animate-pulse"></div>
+                        <div className="space-y-4">
+                            <div className="h-4 w-32 bg-gray-900 rounded animate-pulse"></div>
+                            <div className="h-24 bg-gray-900 rounded animate-pulse"></div>
+                        </div>
+                    </div>
+                    <div className="p-8 space-y-8">
+                        <div className="flex gap-4 mb-8">
+                            {[1, 2, 3, 4].map(i => (
+                                <div key={i} className="h-10 w-32 bg-gray-900 rounded-lg animate-pulse"></div>
+                            ))}
+                        </div>
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="h-40 bg-gray-900 rounded-xl animate-pulse"></div>
+                            <div className="h-40 bg-gray-900 rounded-xl animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Layout>
+    ); if (!campaign) return <Layout><div className="text-white p-8">Campaign not found</div></Layout>;
 
     const isLive = campaign.status === 'executing' || campaign.status === 'paused';
 
@@ -516,6 +565,11 @@ export const Dashboard: React.FC = () => {
                                         recipientCount={recipientCount}
                                         recommendedChannels={campaign.recommended_channels}
                                         onLaunchComplete={() => {
+                                            // In Demo Mode, update the global object so state persists during navigation
+                                            if (DEMO_MODE_ENABLED()) {
+                                                DEMO_CAMPAIGN.status = 'executing';
+                                            }
+
                                             setCampaign({ ...campaign, status: 'executing', campaign_start_date: new Date().toISOString().split('T')[0] });
                                             setActiveTab('campaign_live');
                                         }}
@@ -523,20 +577,22 @@ export const Dashboard: React.FC = () => {
                                 )}
 
                                 {activeTab === 'campaign_live' && isLive && (
-                                    <CampaignTimeline
-                                        campaignId={campaign.id}
-                                        startDate={campaign.campaign_start_date || new Date().toISOString()}
-                                        isPaused={campaign.status === 'paused'}
-                                    />
+                                    <div className="animate-fade-in">
+                                        <CampaignTimeline
+                                            campaignId={campaign.id}
+                                            startDate={campaign.campaign_start_date || new Date().toISOString()}
+                                            isPaused={campaign.status === 'paused'}
+                                        />
+                                    </div>
                                 )}
 
-                                {activeTab === 'overview' && renderOverview()}
-                                {activeTab === 'emails' && renderEmails()}
-                                {activeTab === 'whatsapp' && renderWhatsApp()}
-                                {activeTab === 'social' && renderSocial()}
-                                {activeTab === 'video_ad' && renderVideoAd()}
-                                {activeTab === 'voice_agent' && renderVoiceAgent()}
-                                {activeTab === 'execution_log' && <ExecutionLog campaignId={campaign.id} />}
+                                {activeTab === 'overview' && <div className="animate-fade-in">{renderOverview()}</div>}
+                                {activeTab === 'emails' && <div className="animate-fade-in">{renderEmails()}</div>}
+                                {activeTab === 'whatsapp' && <div className="animate-fade-in">{renderWhatsApp()}</div>}
+                                {activeTab === 'social' && <div className="animate-fade-in">{renderSocial()}</div>}
+                                {activeTab === 'video_ad' && <div className="animate-fade-in">{renderVideoAd()}</div>}
+                                {activeTab === 'voice_agent' && <div className="animate-fade-in">{renderVoiceAgent()}</div>}
+                                {activeTab === 'execution_log' && <div className="animate-fade-in"><ExecutionLog campaignId={campaign.id} /></div>}
                             </div>
                         </div>
                     </div>

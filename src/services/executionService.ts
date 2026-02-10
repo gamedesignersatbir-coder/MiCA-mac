@@ -20,6 +20,12 @@ interface ExecutionScheduleEntry {
  * Fetches all assets and creates schedule entries in Supabase.
  */
 export const generateExecutionSchedule = async (campaignId: string) => {
+    // DEMO MODE BYPASS
+    if (campaignId === 'demo-campaign-001') {
+        console.log('[Demo Mode] Skipping execution schedule generation');
+        return { success: true, entryCount: 25 }; // Mock success
+    }
+
     // 1. Fetch campaign details
     const { data: campaign, error: campaignError } = await supabase
         .from('campaigns')
@@ -186,6 +192,14 @@ export const triggerWebhook = async (action: 'campaign_launched' | 'send_test', 
  * Each task spends time in 'in_progress' so the user can SEE the blue progress bar.
  */
 const simulateDay1Execution = async (campaignId: string) => {
+    // DEMO MODE BYPASS
+    if (campaignId === 'demo-campaign-001') {
+        console.log(`[Demo Simulation] Starting Day 1 execution for ${campaignId}`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.log(`[Demo Simulation] Day 1 completed (mock).`);
+        return;
+    }
+
     console.log(`[Simulation] Starting Day 1 execution for ${campaignId}`);
 
     // Small initial delay to let the UI transition to the Campaign Live tab

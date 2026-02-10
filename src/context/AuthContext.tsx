@@ -17,6 +17,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // Check for Demo Mode first
+        const isDemoMode = localStorage.getItem('mica_demo_mode') === 'true';
+
+        if (isDemoMode) {
+            // Mock session for Demo Mode
+            const mockUser: User = {
+                id: 'demo-user-id',
+                aud: 'authenticated',
+                role: 'authenticated',
+                email: 'demo@mica.ai',
+                email_confirmed_at: new Date().toISOString(),
+                phone: '',
+                confirmed_at: new Date().toISOString(),
+                last_sign_in_at: new Date().toISOString(),
+                app_metadata: { provider: 'email', providers: ['email'] },
+                user_metadata: { full_name: 'Demo User' },
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+
+            const mockSession: Session = {
+                access_token: 'demo-token',
+                token_type: 'bearer',
+                expires_in: 3600,
+                refresh_token: 'demo-refresh-token',
+                user: mockUser,
+            };
+
+            setSession(mockSession);
+            setUser(mockUser);
+            setLoading(false);
+            return; // Skip Supabase auth listener
+        }
+
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
             setUser(session?.user ?? null);
@@ -33,7 +67,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }, []);
 
     const signOut = async () => {
+        localStorage.removeItem('mica_demo_mode');
         await supabase.auth.signOut();
+        // Force reload to clear any demo state
+        window.location.href = '/login';
     };
 
     return (

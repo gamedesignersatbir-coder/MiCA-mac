@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Calendar, BarChart2, MoreVertical, Sparkles } from 'lucide-react';
+import { Plus, Calendar, BarChart2, MoreVertical, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import { DEMO_MODE_ENABLED, DEMO_CAMPAIGN } from '../data/demoData';
 
 interface Campaign {
     id: string;
@@ -27,6 +28,21 @@ export const CampaignList: React.FC = () => {
 
     const fetchCampaigns = async () => {
         try {
+            // DEMO MODE CHECK
+            if (DEMO_MODE_ENABLED()) {
+                const demoCampaign: Campaign = {
+                    id: DEMO_CAMPAIGN.id,
+                    product_name: DEMO_CAMPAIGN.product_name,
+                    status: DEMO_CAMPAIGN.status,
+                    created_at: new Date().toISOString(),
+                    launch_date: DEMO_CAMPAIGN.launch_date,
+                    tone: DEMO_CAMPAIGN.tone
+                };
+                setCampaigns([demoCampaign]);
+                setLoading(false);
+                return;
+            }
+
             const { data, error } = await supabase
                 .from('campaigns')
                 .select('*')
@@ -79,21 +95,26 @@ export const CampaignList: React.FC = () => {
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
                     </div>
                 ) : campaigns.length === 0 ? (
-                    <div className="text-center py-20 bg-gray-900 border border-gray-800 rounded-xl">
-                        <Sparkles className="w-16 h-16 text-gray-700 mx-auto mb-4" />
-                        <h3 className="text-xl font-semibold text-white mb-2">No campaigns yet</h3>
-                        <p className="text-gray-400 mb-6">Create your first AI-powered marketing campaign today.</p>
+                    <div className="text-center py-20 bg-gray-900 border border-gray-800 rounded-xl animate-fade-in">
+                        <div className="bg-gray-800/50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <Sparkles className="w-10 h-10 text-indigo-400" />
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">No campaigns yet</h3>
+                        <p className="text-gray-400 mb-8 max-w-md mx-auto">
+                            Create your first campaign and let MiCA handle the marketing.
+                        </p>
                         <Link to="/create-campaign">
-                            <Button>Start First Campaign</Button>
+                            <Button size="lg" className="shadow-lg shadow-indigo-500/20">Create Campaign →</Button>
                         </Link>
                     </div>
                 ) : (
-                    <div className="grid gap-4">
-                        {campaigns.map((campaign) => (
+                    <div className="grid gap-4 animate-fade-in">
+                        {campaigns.map((campaign, index) => (
                             <Link
                                 key={campaign.id}
                                 to={getLink(campaign)}
-                                className="block bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-indigo-500/50 transition-colors group"
+                                className="block bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-indigo-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/10 group"
+                                style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}
                             >
                                 <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
                                     <div className="flex-1">
@@ -101,20 +122,20 @@ export const CampaignList: React.FC = () => {
                                             <h3 className="text-xl font-semibold text-white group-hover:text-indigo-400 transition-colors">
                                                 {campaign.product_name}
                                             </h3>
-                                            <span className={`text-xs px-2 py-0.5 rounded-full border uppercase tracking-wide font-bold ${getStatusColor(campaign.status)}`}>
+                                            <span className={`text-[10px] px-2.5 py-0.5 rounded-full border uppercase tracking-wide font-bold ${getStatusColor(campaign.status)}`}>
                                                 {campaign.status.replace('_', ' ')}
                                             </span>
                                         </div>
-                                        <div className="flex items-center gap-6 text-sm text-gray-400">
-                                            <div className="flex items-center gap-1">
-                                                <Calendar className="w-4 h-4" /> Launch: {campaign.launch_date}
+                                        <div className="flex items-center gap-6 text-sm text-gray-500 group-hover:text-gray-400 transition-colors">
+                                            <div className="flex items-center gap-1.5">
+                                                <Calendar className="w-3.5 h-3.5" /> Launch: {campaign.launch_date}
                                             </div>
-                                            <div className="flex items-center gap-1">
-                                                <Sparkles className="w-4 h-4" /> Tone: {campaign.tone}
+                                            <div className="flex items-center gap-1.5">
+                                                <Sparkles className="w-3.5 h-3.5" /> Tone: {campaign.tone}
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-4 text-gray-500">
+                                    <div className="flex items-center gap-4 text-gray-600 group-hover:text-gray-400 transition-colors">
                                         <BarChart2 className="w-5 h-5" />
                                         <div className="w-px h-8 bg-gray-800 hidden md:block"></div>
                                         <MoreVertical className="w-5 h-5" />

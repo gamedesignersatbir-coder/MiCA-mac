@@ -17,6 +17,16 @@ export const Login: React.FC = () => {
         setLoading(true);
         setError(null);
 
+        // DEMO LOGIN BACKDOOR
+        if (email === 'demo@mica.ai' && password === 'demo123') {
+            localStorage.setItem('mica_demo_mode', 'true');
+            // Store a flag to show the toast after reload
+            localStorage.setItem('show_demo_toast', 'true');
+            // Force reload to trigger AuthContext demo logic
+            window.location.href = '/create-campaign';
+            return;
+        }
+
         try {
             const { error } = await supabase.auth.signInWithPassword({
                 email,

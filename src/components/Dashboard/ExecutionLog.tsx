@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { format } from 'date-fns';
 import { Mail, MessageSquare, Instagram, CheckCircle2, XCircle, Clock, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import { DEMO_MODE_ENABLED, DEMO_CAMPAIGN } from '../../data/demoData';
 
 interface ExecutionLogProps {
     campaignId: string;
@@ -36,6 +37,8 @@ export const ExecutionLog: React.FC<ExecutionLogProps> = ({ campaignId }) => {
     useEffect(() => {
         fetchLogs();
 
+        if (DEMO_MODE_ENABLED()) return;
+
         // Subscribe to schedule updates
         const channel = supabase
             .channel('log-updates')
@@ -55,6 +58,12 @@ export const ExecutionLog: React.FC<ExecutionLogProps> = ({ campaignId }) => {
     }, [campaignId]);
 
     const fetchLogs = async () => {
+        if (DEMO_MODE_ENABLED()) {
+            // In Demo Mode, show execution schedule as logs
+            setLogs(DEMO_CAMPAIGN.execution_schedule as any[]);
+            return;
+        }
+
         const { data } = await supabase
             .from('execution_schedule')
             .select('*')
@@ -74,6 +83,24 @@ export const ExecutionLog: React.FC<ExecutionLogProps> = ({ campaignId }) => {
 
         if (!details[entryId]) {
             setLoadingDetails(entryId);
+
+            if (DEMO_MODE_ENABLED()) {
+                // Filter demo logs for this specific entry/channel if possible, 
+                // or just show a relevant subset based on the entry's channel
+                // DEMO_CAMPAIGN.campaign_logs contains sample logs.
+                const demoLogs = (DEMO_CAMPAIGN.campaign_logs as any[]).filter(l => l.channel === channel);
+                // Just take first few to mimic detail look
+                const entryLogs = demoLogs.slice(0, 3).map((l, i) => ({
+                    ...l,
+                    id: `${entryId}-log-${i}`, // fake unique id
+                    executed_at: new Date().toISOString() // fake fresh time
+                }));
+
+                setDetails(prev => ({ ...prev, [entryId]: entryLogs }));
+                setLoadingDetails(null);
+                return;
+            }
+
             try {
                 const { data } = await supabase
                     .from('campaign_logs')
@@ -142,60 +169,74 @@ export const ExecutionLog: React.FC<ExecutionLogProps> = ({ campaignId }) => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800">
-                        {logs.map(log => (
-                            <React.Fragment key={log.id}>
-                                <tr
-                                    className={`hover:bg-gray-800/50 transition-colors cursor-pointer ${expandedRow === log.id ? 'bg-gray-800/50' : ''}`}
-                                    onClick={() => toggleExpand(log.id, log.channel)}
-                                >
-                                    <td className="px-6 py-4 font-mono text-gray-400">Day {log.scheduled_day}</td>
-                                    <td className="px-6 py-4 flex items-center gap-2 capitalize text-white font-medium">
-                                        <span className="p-1.5 bg-gray-800 rounded-md text-gray-500">{getChannelIcon(log.channel)}</span>
-                                        {log.channel}
-                                    </td>
-                                    <td className="px-6 py-4 text-gray-400">{format(new Date(log.scheduled_date), 'MMM d, yyyy')}</td>
-                                    <td className="px-6 py-4">{getStatusBadge(log.status)}</td>
-                                    <td className="px-6 py-4 font-mono text-gray-400">
-                                        {getResultsText(log)}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        {expandedRow === log.id ? <ChevronDown className="w-4 h-4 text-gray-500" /> : <ChevronRight className="w-4 h-4 text-gray-500" />}
-                                    </td>
-                                </tr>
-
-                                {expandedRow === log.id && (
-                                    <tr>
-                                        <td colSpan={6} className="bg-gray-950 px-6 py-4 border-b border-gray-800 shadow-inner">
-                                            <div className="max-w-3xl">
-                                                <h4 className="text-xs font-bold text-gray-500 uppercase mb-3">Execution Log Details</h4>
-
-                                                {loadingDetails === log.id ? (
-                                                    <div className="text-gray-400 text-sm flex items-center gap-2"><Loader2 className="w-3 h-3 animate-spin" /> Loading logs...</div>
-                                                ) : details[log.id] && details[log.id].length > 0 ? (
-                                                    <ul className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
-                                                        {details[log.id].map(detail => (
-                                                            <li key={detail.id} className="text-xs flex gap-3 text-gray-400 font-mono">
-                                                                <span className="text-gray-600">{format(new Date(detail.executed_at), 'HH:mm:ss')}</span>
-                                                                <span className={detail.action.includes('failed') ? 'text-red-500' : 'text-green-500'}>
-                                                                    [{detail.action.toUpperCase()}]
-                                                                </span>
-                                                                <span>{detail.recipient}</span>
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                ) : (
-                                                    <div className="text-gray-600 text-sm italic">
-                                                        {log.status === 'scheduled' || log.status === 'paused'
-                                                            ? 'This task has not been executed yet.'
-                                                            : 'No detailed logs available for this entry.'}
-                                                    </div>
-                                                )}
-                                            </div>
+                        {logs.length === 0 ? (
+                            <tr>
+                                <td colSpan={6} className="px-6 py-16 text-center text-gray-500">
+                                    <div className="bg-gray-800/50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <Clock className="w-8 h-8 text-gray-600" />
+                                    </div>
+                                    <h3 className="text-white font-medium mb-1">No executions yet</h3>
+                                    <p className="text-xs text-gray-500 max-w-xs mx-auto">
+                                        Launch your campaign to see real-time performance results here.
+                                    </p>
+                                </td>
+                            </tr>
+                        ) : (
+                            logs.map(log => (
+                                <React.Fragment key={log.id}>
+                                    <tr
+                                        className={`hover:bg-gray-800/50 transition-colors cursor-pointer ${expandedRow === log.id ? 'bg-gray-800/50' : ''}`}
+                                        onClick={() => toggleExpand(log.id, log.channel)}
+                                    >
+                                        <td className="px-6 py-4 font-mono text-gray-400">Day {log.scheduled_day}</td>
+                                        <td className="px-6 py-4 flex items-center gap-2 capitalize text-white font-medium">
+                                            <span className="p-1.5 bg-gray-800 rounded-md text-gray-500">{getChannelIcon(log.channel)}</span>
+                                            {log.channel}
+                                        </td>
+                                        <td className="px-6 py-4 text-gray-400">{format(new Date(log.scheduled_date), 'MMM d, yyyy')}</td>
+                                        <td className="px-6 py-4">{getStatusBadge(log.status)}</td>
+                                        <td className="px-6 py-4 font-mono text-gray-400">
+                                            {getResultsText(log)}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {expandedRow === log.id ? <ChevronDown className="w-4 h-4 text-gray-500" /> : <ChevronRight className="w-4 h-4 text-gray-500" />}
                                         </td>
                                     </tr>
-                                )}
-                            </React.Fragment>
-                        ))}
+
+                                    {expandedRow === log.id && (
+                                        <tr className="animate-fade-in">
+                                            <td colSpan={6} className="bg-gray-950 px-6 py-4 border-b border-gray-800 shadow-inner">
+                                                <div className="max-w-3xl">
+                                                    <h4 className="text-xs font-bold text-gray-500 uppercase mb-3">Execution Log Details</h4>
+
+                                                    {loadingDetails === log.id ? (
+                                                        <div className="text-gray-400 text-sm flex items-center gap-2"><Loader2 className="w-3 h-3 animate-spin" /> Loading logs...</div>
+                                                    ) : details[log.id] && details[log.id].length > 0 ? (
+                                                        <ul className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+                                                            {details[log.id].map(detail => (
+                                                                <li key={detail.id} className="text-xs flex gap-3 text-gray-400 font-mono">
+                                                                    <span className="text-gray-600">{format(new Date(detail.executed_at), 'HH:mm:ss')}</span>
+                                                                    <span className={detail.action.includes('failed') ? 'text-red-500' : 'text-green-500'}>
+                                                                        [{detail.action.toUpperCase()}]
+                                                                    </span>
+                                                                    <span>{detail.recipient}</span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    ) : (
+                                                        <div className="text-gray-600 text-sm italic">
+                                                            {log.status === 'scheduled' || log.status === 'paused'
+                                                                ? 'This task has not been executed yet.'
+                                                                : 'No detailed logs available for this entry.'}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </React.Fragment>
+                            ))
+                        )}
                     </tbody>
                 </table>
             </div>

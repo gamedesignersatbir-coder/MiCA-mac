@@ -9,6 +9,7 @@ import { generateImage } from '../../services/imageService';
 import { buildImagePrompt } from '../../services/imagePromptBuilder';
 import { generateVideo } from '../../services/videoService';
 import { HEYGEN_CONFIG } from '../../config/heygen';
+import { DEMO_MODE_ENABLED, DEMO_CAMPAIGN } from '../../data/demoData';
 
 interface Campaign {
     id: string;
@@ -50,6 +51,16 @@ export const GeneratingCampaign: React.FC = () => {
 
     const fetchCampaign = async () => {
         if (!id) return;
+
+        // DEMO MODE CHECK
+        if (DEMO_MODE_ENABLED()) {
+            setCampaign(DEMO_CAMPAIGN as any);
+            if (!generationStartedRef.current) {
+                simulateGeneration();
+            }
+            return;
+        }
+
         try {
             const { data, error } = await supabase
                 .from('campaigns')
@@ -72,6 +83,59 @@ export const GeneratingCampaign: React.FC = () => {
             console.error('Error fetching campaign:', error);
             setError('Failed to load campaign data');
         }
+    };
+
+    const simulateGeneration = async () => {
+        if (generationStartedRef.current) return;
+        generationStartedRef.current = true;
+
+        // Helper to wait
+        const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+        // 1. Strategy
+        setCurrentStep(0);
+        await wait(1500);
+        setCompletedSteps(prev => [...prev, 'strategy']);
+
+        // 2. Emails
+        setCurrentStep(1);
+        await wait(1500);
+        setCompletedSteps(prev => [...prev, 'emails']);
+
+        // 3. Content
+        setCurrentStep(2);
+        await wait(2000);
+        setCompletedSteps(prev => [...prev, 'content']);
+
+        // 4. Images
+        setCurrentStep(3);
+        const totalImages = 5;
+        for (let i = 1; i <= totalImages; i++) {
+            setProgressText(`Generating image ${i} of ${totalImages}...`);
+            await wait(800); // Fast simulation
+        }
+        setProgressText("");
+        setCompletedSteps(prev => [...prev, 'images']);
+
+        // 5. Video Script
+        setCurrentStep(4);
+        await wait(1200);
+        setCompletedSteps(prev => [...prev, 'video_script']);
+
+        // 6. Video
+        setCurrentStep(5);
+        await wait(3000);
+        setCompletedSteps(prev => [...prev, 'video']);
+
+        // 7. Finalize
+        setCurrentStep(6);
+        await wait(1000);
+        setCompletedSteps(prev => [...prev, 'finalize']);
+
+        // Done
+        setTimeout(() => {
+            navigate(`/campaign/${DEMO_CAMPAIGN.id}/dashboard`);
+        }, 1000);
     };
 
     const startGeneration = async (campaignData: Campaign) => {

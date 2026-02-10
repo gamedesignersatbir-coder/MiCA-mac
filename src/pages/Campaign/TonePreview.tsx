@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Layout } from '../../components/Layout';
 import { callAI } from '../../services/aiService';
+import { DEMO_MODE_ENABLED, DEMO_CAMPAIGN, DEMO_TONE_VARIANTS } from '../../data/demoData';
 
 interface Campaign {
     id: string;
@@ -94,6 +95,16 @@ export const TonePreview: React.FC = () => {
 
     const fetchCampaign = async () => {
         if (!id) return;
+
+        if (DEMO_MODE_ENABLED()) {
+            setCampaign(DEMO_CAMPAIGN as any);
+            setNewTone(DEMO_CAMPAIGN.tone);
+            setCustomFeedback(DEMO_CAMPAIGN.tone_custom_words || '');
+            setPreviewData(DEMO_CAMPAIGN.tone_preview_content);
+            setLoading(false);
+            return;
+        }
+
         try {
             const { data, error } = await supabase
                 .from('campaigns')
@@ -140,6 +151,30 @@ Generate the tone preview samples now.`;
     const generatePreview = async (campaignData: Campaign, isRevision = false) => {
         setGenerating(true);
         setError(null);
+
+        // DEMO MODE BYPASS
+        if (DEMO_MODE_ENABLED()) {
+            setTimeout(() => {
+                const toneKey = isRevision ? newTone : campaignData.tone;
+                // Default to Warm & Inspirational if tone not found (or if Custom and no specific custom logic)
+                const mockResponse = DEMO_TONE_VARIANTS[toneKey] || DEMO_TONE_VARIANTS["Warm & Inspirational"];
+
+                setPreviewData(mockResponse);
+                setCampaign(prev => prev ? ({
+                    ...prev,
+                    tone: toneKey,
+                    tone_custom_words: isRevision ? customFeedback : prev.tone_custom_words,
+                    tone_revision_used: isRevision ? true : prev.tone_revision_used,
+                    tone_preview_content: mockResponse
+                }) : null);
+
+                setIsEditing(false);
+                setGenerating(false);
+                setLoading(false);
+            }, 2000); // 2s simulated delay
+            return;
+        }
+
         try {
             // Build prompt
             const userPrompt = buildUserPrompt(
@@ -202,6 +237,12 @@ Generate the tone preview samples now.`;
 
     const handleApprove = async () => {
         if (!id) return;
+
+        if (DEMO_MODE_ENABLED()) {
+            navigate(`/campaign/${id}/generating`);
+            return;
+        }
+
         try {
             const { error } = await supabase
                 .from('campaigns')

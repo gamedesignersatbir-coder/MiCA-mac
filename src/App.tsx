@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { DemoModeToggle } from './components/DemoModeToggle';
 import { LandingPage } from './pages/LandingPage';
 import { Login } from './pages/Auth/Login';
 import { Signup } from './pages/Auth/Signup';
@@ -8,6 +9,7 @@ import { TonePreview } from './pages/Campaign/TonePreview';
 import { GeneratingCampaign } from './pages/Campaign/GeneratingCampaign';
 import { Dashboard } from './pages/Campaign/Dashboard';
 import { CampaignList } from './pages/CampaignList';
+import { DemoPrep } from './pages/DemoPrep';
 
 // Protected Route Wrapper
 const ProtectedRoute = () => {
@@ -24,6 +26,7 @@ function App() {
   return (
     <Router>
       <AuthProvider>
+        <DemoModeToggle />
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
@@ -38,6 +41,7 @@ function App() {
             <Route path="/campaign/:id/generating" element={<GeneratingCampaign />} />
             <Route path="/campaign/:id/dashboard" element={<Dashboard />} />
             <Route path="/dashboard" element={<Navigate to="/campaigns" replace />} />
+            <Route path="/demo-prep" element={<DemoPrep />} />
           </Route>
 
           {/* Fallback */}

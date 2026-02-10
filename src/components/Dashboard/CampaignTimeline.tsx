@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Mail, MessageSquare, Instagram, CheckCircle2, Clock, PlayCircle, Calendar, PauseCircle, Eye, X } from 'lucide-react';
 import { format, addDays } from 'date-fns';
+import { DEMO_MODE_ENABLED, DEMO_CAMPAIGN } from '../../data/demoData';
 
 interface ScheduleEntry {
     id: string;
@@ -31,36 +32,71 @@ export const CampaignTimeline: React.FC<CampaignTimelineProps> = ({ campaignId, 
     const [loadingPreview, setLoadingPreview] = useState(false);
     const [showAllUpcoming, setShowAllUpcoming] = useState(false);
 
-    // Initial Fetch
+    // Initial Fetch & Realtime Subscription
     useEffect(() => {
         fetchSchedule();
 
-        // Realtime Subscription
-        const channel = supabase
-            .channel('execution-updates')
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'execution_schedule',
-                filter: `campaign_id=eq.${campaignId}`
-            }, (payload) => {
-                if (payload.eventType === 'UPDATE') {
-                    setSchedule(prev => prev.map(entry =>
-                        entry.id === (payload.new as any).id ? { ...entry, ...(payload.new as any) } : entry
-                    ));
-                } else if (payload.eventType === 'INSERT') {
-                    fetchSchedule(); // Refresh all on insert
-                }
-            })
-            .subscribe();
+        // POLL FALLBACK (Vital for when Realtime fails or is delayed)
+        // We poll every 2s to ensure the UI stays in sync with the backend simulation
+        let pollInterval: NodeJS.Timeout;
 
-        return () => {
-            supabase.removeChannel(channel);
-        };
+        if (!DEMO_MODE_ENABLED()) {
+            pollInterval = setInterval(() => {
+                fetchSchedule(true); // silent fetch
+            }, 2000);
+
+            // Also subscribe to changes for immediate updates if possible
+            const channel = supabase
+                .channel(`execution-updates-${campaignId}`)
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'execution_schedule',
+                    filter: `campaign_id=eq.${campaignId}`
+                }, (payload) => {
+                    if (payload.eventType === 'UPDATE') {
+                        setSchedule(prev => prev.map(entry =>
+                            entry.id === (payload.new as any).id ? { ...entry, ...(payload.new as any) } : entry
+                        ));
+                    } else if (payload.eventType === 'INSERT') {
+                        fetchSchedule();
+                    }
+                })
+                .subscribe();
+
+            return () => {
+                clearInterval(pollInterval);
+                supabase.removeChannel(channel);
+            };
+        }
     }, [campaignId]);
 
-    const fetchSchedule = async () => {
+    const fetchSchedule = async (silent = false) => {
         try {
+            if (DEMO_MODE_ENABLED()) {
+                // ... demo logic ...
+                const start = new Date(startDate);
+                const demoSchedule = DEMO_CAMPAIGN.execution_schedule.map(item => ({
+                    ...item,
+                    scheduled_date: addDays(start, item.scheduled_day - 1).toISOString()
+                }));
+
+                const enrichedSchedule = demoSchedule.map(entry => ({
+                    ...entry,
+                    asset_title: getAssetTitle(entry as any)
+                }));
+
+                setSchedule(enrichedSchedule as any);
+                if (!silent) setLoading(false);
+
+                // Start client-side simulation if just launched
+                const day1Tasks = enrichedSchedule.filter(t => t.scheduled_day === 1 && t.status === 'scheduled');
+                if (day1Tasks.length > 0) {
+                    simulateDemoProgress(enrichedSchedule as any[]);
+                }
+                return;
+            }
+
             const { data: scheduleData, error } = await supabase
                 .from('execution_schedule')
                 .select('*')
@@ -78,8 +114,77 @@ export const CampaignTimeline: React.FC<CampaignTimelineProps> = ({ campaignId, 
         } catch (err) {
             console.error("Failed to fetch schedule:", err);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
+    };
+
+    const simulateDemoProgress = (initialSchedule: ScheduleEntry[]) => {
+        let currentSchedule = [...initialSchedule];
+
+        // Filter for Day 1 tasks that are NOT completed
+        // If they are already completed in the global object (passed in via initialSchedule), we skip simulation
+        const day1Indices = currentSchedule
+            .map((t, i) => (t.scheduled_day === 1 && t.status !== 'completed' ? i : -1))
+            .filter(i => i !== -1);
+
+        if (day1Indices.length === 0) return;
+
+        let taskIndex = 0; // Index within day1Indices
+
+        const processNextTask = () => {
+            if (taskIndex >= day1Indices.length) return;
+
+            const realIndex = day1Indices[taskIndex];
+            const task = currentSchedule[realIndex];
+            const total = task.recipients_total || 1;
+
+            // 1. Start Task
+            currentSchedule[realIndex] = { ...task, status: 'in_progress', recipients_sent: 0 };
+            setSchedule([...currentSchedule]);
+
+            // 2. Animate Progress
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.floor(total / 5); // 5 steps
+                if (progress >= total) {
+                    clearInterval(interval);
+
+                    // 3. Complete Task
+                    const completedTask = {
+                        ...task,
+                        status: 'completed',
+                        recipients_sent: total,
+                        completed_at: new Date().toISOString()
+                    };
+                    currentSchedule[realIndex] = completedTask;
+                    setSchedule([...currentSchedule]);
+
+                    // Update Global Demo Data (for navigation persistence)
+                    if (DEMO_MODE_ENABLED()) {
+                        const globalIndex = DEMO_CAMPAIGN.execution_schedule.findIndex(t => t.id === task.id);
+                        if (globalIndex !== -1) {
+                            DEMO_CAMPAIGN.execution_schedule[globalIndex] = completedTask as any;
+                        }
+                    }
+
+                    // Move to next task after delay
+                    taskIndex++;
+                    setTimeout(processNextTask, 500);
+                } else {
+                    // Update Progress
+                    const inProgressTask = {
+                        ...task,
+                        status: 'in_progress',
+                        recipients_sent: progress
+                    };
+                    currentSchedule[realIndex] = inProgressTask;
+                    setSchedule([...currentSchedule]);
+                }
+            }, 600); // Speed of progress bar
+        };
+
+        // Start the sequence
+        setTimeout(processNextTask, 1000);
     };
 
     const getAssetTitle = (entry: ScheduleEntry) => {
@@ -105,6 +210,30 @@ export const CampaignTimeline: React.FC<CampaignTimelineProps> = ({ campaignId, 
     const handlePreview = async (item: ScheduleEntry) => {
         setPreviewItem(item);
         setLoadingPreview(true);
+
+        if (DEMO_MODE_ENABLED()) {
+            try {
+                let content: any = null;
+                if (item.asset_type === 'email_template') {
+                    content = (DEMO_CAMPAIGN.email_templates as any[]).find(e => e.id === item.asset_id);
+                    if (content) setPreviewContent(`**Subject:** ${content.subject}\n\n**Preview:** ${content.pre_header}\n\n${content.body}\n\n_CTA: ${content.cta_text}_`);
+                } else if (item.asset_type === 'whatsapp_message') {
+                    content = (DEMO_CAMPAIGN.whatsapp_messages as any[]).find(m => m.id === item.asset_id);
+                    if (content) setPreviewContent(content.message_text);
+                } else if (item.asset_type === 'social_post') {
+                    content = (DEMO_CAMPAIGN.social_posts as any[]).find(p => p.id === item.asset_id);
+                    if (content) setPreviewContent(`${content.caption}\n\n${content.hashtags || ''}`);
+                }
+
+                if (!content) setPreviewContent('Content not found in demo data.');
+            } catch (e) {
+                setPreviewContent('Failed to load demo preview.');
+            } finally {
+                setLoadingPreview(false);
+            }
+            return;
+        }
+
         try {
             let table = '';
             if (item.asset_type === 'email_template') table = 'email_templates';
@@ -350,9 +479,9 @@ export const CampaignTimeline: React.FC<CampaignTimelineProps> = ({ campaignId, 
                         </div>
                         <div className="p-4 border-t border-gray-800 flex justify-between items-center">
                             <span className={`text-xs px-2 py-1 rounded ${previewItem.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                                    previewItem.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
-                                        previewItem.status === 'paused' ? 'bg-yellow-500/20 text-yellow-400' :
-                                            'bg-gray-800 text-gray-500'
+                                previewItem.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
+                                    previewItem.status === 'paused' ? 'bg-yellow-500/20 text-yellow-400' :
+                                        'bg-gray-800 text-gray-500'
                                 }`}>{previewItem.status === 'completed' ? '✓ Completed' : previewItem.status === 'in_progress' ? '⚡ In Progress' : previewItem.status === 'paused' ? '⏸ Paused' : '⏱ Scheduled'}</span>
                         </div>
                     </div>

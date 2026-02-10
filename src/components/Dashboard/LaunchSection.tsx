@@ -84,7 +84,7 @@ export const LaunchSection: React.FC<LaunchSectionProps> = ({
                 <div className="flex justify-center">
                     <Button
                         onClick={() => setShowConfirm(true)}
-                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-10 py-4 text-lg rounded-full shadow-[0_0_20px_rgba(79,70,229,0.4)] hover:shadow-[0_0_30px_rgba(79,70,229,0.6)] transform hover:-translate-y-1 transition-all duration-300 font-bold flex items-center gap-3"
+                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-10 py-4 text-lg rounded-full shadow-[0_0_20px_rgba(79,70,229,0.4)] hover:shadow-[0_0_30px_rgba(79,70,229,0.6)] transform hover:scale-[1.05] transition-all duration-300 font-bold flex items-center gap-3"
                     >
                         <Rocket className="w-5 h-5" /> LAUNCH CAMPAIGN NOW
                     </Button>

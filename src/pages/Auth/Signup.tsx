@@ -18,6 +18,14 @@ export const Signup: React.FC = () => {
         setLoading(true);
         setError(null);
 
+        // DEMO SIGNUP BACKDOOR
+        if (email === 'demo@mica.ai' && password === 'demo123') {
+            localStorage.setItem('mica_demo_mode', 'true');
+            localStorage.setItem('show_demo_toast', 'true');
+            window.location.href = '/create-campaign';
+            return;
+        }
+
         if (password.length < 6) {
             setError('Password must be at least 6 characters');
             setLoading(false);
