@@ -121,14 +121,21 @@ interface SocialPostCardProps {
 }
 
 export const SocialPostCard: React.FC<SocialPostCardProps> = ({ post, onGenerateImage, generatingImageId }) => {
+    const [imageError, setImageError] = React.useState(false);
+
     return (
         <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-gray-700 transition-colors">
             {/* Image Area */}
             <div className="aspect-square bg-gray-950 relative group">
-                {post.image_url ? (
+                {post.image_url && !imageError ? (
                     <>
-                        <img src={post.image_url} alt="Social post" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <img
+                            src={post.image_url}
+                            alt="Social post"
+                            className="w-full h-full object-cover"
+                            onError={() => setImageError(true)}
+                        />
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                             <a
                                 href={post.image_url}
                                 target="_blank"
@@ -137,8 +144,41 @@ export const SocialPostCard: React.FC<SocialPostCardProps> = ({ post, onGenerate
                             >
                                 <Download className="w-4 h-4" /> Download
                             </a>
+                            {onGenerateImage && (
+                                <button
+                                    onClick={() => onGenerateImage(post.id, post.image_suggestion)}
+                                    disabled={generatingImageId === post.id}
+                                    className="px-4 py-2 bg-indigo-500 text-white rounded-full text-sm font-medium flex items-center gap-2 hover:bg-indigo-400 disabled:opacity-50"
+                                >
+                                    <RefreshCw className="w-4 h-4" /> Regenerate
+                                </button>
+                            )}
                         </div>
                     </>
+                ) : post.image_url && imageError ? (
+                    /* Image URL exists but failed to load (expired Replicate URL) */
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+                        <div className="border-2 border-dashed border-red-800/50 rounded-xl inset-4 absolute" />
+                        <div className="text-3xl mb-3">🖼️</div>
+                        <p className="text-sm text-red-400 font-medium relative z-10 mb-2">Image Expired</p>
+                        <p className="text-xs text-gray-500 relative z-10 mb-4 px-4">The original image URL has expired. Click below to regenerate.</p>
+                        {onGenerateImage && (
+                            <button
+                                onClick={() => {
+                                    setImageError(false);
+                                    onGenerateImage(post.id, post.image_suggestion);
+                                }}
+                                disabled={generatingImageId === post.id}
+                                className="relative z-10 px-4 py-2 bg-indigo-500/20 text-indigo-400 rounded-lg text-sm font-medium hover:bg-indigo-500/30 disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {generatingImageId === post.id ? (
+                                    <><RefreshCw className="w-3 h-3 animate-spin" /> Regenerating...</>
+                                ) : (
+                                    <><RefreshCw className="w-3 h-3" /> Regenerate Image</>
+                                )}
+                            </button>
+                        )}
+                    </div>
                 ) : (
                     <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
                         <div className="border-2 border-dashed border-gray-800 rounded-xl inset-4 absolute" />
@@ -180,3 +220,4 @@ export const SocialPostCard: React.FC<SocialPostCardProps> = ({ post, onGenerate
         </div>
     );
 };
+

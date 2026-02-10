@@ -28,6 +28,12 @@ CREATE TABLE campaigns (
   -- Statuses: draft → tone_preview → tone_approved → generating → plan_ready → approved → executing → completed
   tone_preview_content JSONB, -- lightweight preview content for tone approval step
   tone_revision_used BOOLEAN DEFAULT false, -- user gets exactly ONE revision
+  
+  -- Execution fields
+  launched_at TIMESTAMPTZ,
+  campaign_start_date DATE,
+  campaign_end_date DATE,
+  
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -137,6 +143,49 @@ CREATE TABLE execution_stats (
 
 CREATE POLICY "Users see own stats" ON execution_stats FOR ALL 
 USING (campaign_id IN (SELECT id FROM campaigns WHERE user_id = auth.uid()));
+
+-- Table 9: execution_schedule
+CREATE TABLE execution_schedule (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  campaign_id UUID REFERENCES campaigns(id) ON DELETE CASCADE NOT NULL,
+  
+  -- What to execute
+  channel VARCHAR(50) NOT NULL, -- email | whatsapp | instagram | voice_agent
+  asset_type VARCHAR(50) NOT NULL, -- email_template | whatsapp_message | social_post
+  asset_id UUID NOT NULL, -- references the specific email/message/post ID
+  
+  -- When to execute
+  scheduled_day INTEGER NOT NULL, -- day 1-28 of the campaign
+  scheduled_date DATE NOT NULL, -- actual calendar date (calculated from campaign launch date)
+  
+  -- Execution status
+  status VARCHAR(50) DEFAULT 'scheduled', 
+  -- scheduled → in_progress → completed → failed → skipped | paused
+  
+  -- Results (filled after execution)
+  recipients_total INTEGER DEFAULT 0,
+  recipients_sent INTEGER DEFAULT 0,
+  recipients_failed INTEGER DEFAULT 0,
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  error_details TEXT,
+  
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for scheduler
+CREATE INDEX idx_schedule_date_status ON execution_schedule(scheduled_date, status);
+CREATE INDEX idx_schedule_campaign ON execution_schedule(campaign_id);
+
+ALTER TABLE execution_schedule ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users see own schedule" ON execution_schedule FOR ALL 
+USING (campaign_id IN (SELECT id FROM campaigns WHERE user_id = auth.uid()));
+
+-- Add columns to campaigns table (these should be run as ALTER statements if table exists, 
+-- but for this file which defines the schema, we can add them to the CREATE statement or here as comments if this file is used for reference)
+-- ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS launched_at TIMESTAMPTZ;
+-- ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS campaign_start_date DATE;
+-- ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS campaign_end_date DATE;
 
 -- Storage Buckets (Manual creation usually required in dashboard, but policies can be defined if buckets exist)
 -- product-documents: private, per-user

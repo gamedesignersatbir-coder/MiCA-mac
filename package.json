@@ -13,6 +13,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.95.3",
     "@types/papaparse": "^5.5.2",
+    "date-fns": "^4.1.0",
     "lucide-react": "^0.563.0",
     "openai": "^6.18.0",
     "papaparse": "^5.5.3",

@@ -5,11 +5,15 @@ import { Button } from '../../components/ui/Button';
 import { supabase } from '../../lib/supabase';
 import {
     LayoutDashboard, Mail, MessageSquare, Instagram,
-    ArrowLeft, Video, Mic, CheckCircle2
+    ArrowLeft, Video, Mic, CheckCircle2, PauseCircle, PlayCircle, Send
 } from 'lucide-react';
 import { VideoPlayer, SocialPostCard } from '../../components/DashboardComponents';
+import { LaunchSection } from '../../components/Dashboard/LaunchSection';
+import { CampaignTimeline } from '../../components/Dashboard/CampaignTimeline';
+import { ExecutionLog } from '../../components/Dashboard/ExecutionLog';
 import { generateImage } from '../../services/imageService';
 import { buildImagePrompt } from '../../services/imagePromptBuilder';
+import { pauseCampaign, resumeCampaign, triggerWebhook } from '../../services/executionService';
 
 interface Campaign {
     id: string;
@@ -22,6 +26,7 @@ interface Campaign {
     video_script?: string;
     target_audience: string;
     launch_date?: string;
+    campaign_start_date?: string;
     budget: number;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any;
@@ -64,6 +69,8 @@ export const Dashboard: React.FC = () => {
     const [socialPosts, setSocialPosts] = useState<SocialPost[]>([]);
     const [loading, setLoading] = useState(true);
     const [generatingImageId, setGeneratingImageId] = useState<string | null>(null);
+    const [recipientCount, setRecipientCount] = useState(0);
+    const [sendingTest, setSendingTest] = useState<string | null>(null); // ID of asset being tested
 
     useEffect(() => {
         if (id) fetchData();
@@ -72,6 +79,7 @@ export const Dashboard: React.FC = () => {
 
     const fetchData = async () => {
         try {
+            if (!id) return;
             // Fetch Campaign
             const { data: campaignData, error: campaignError } = await supabase
                 .from('campaigns')
@@ -81,6 +89,13 @@ export const Dashboard: React.FC = () => {
 
             if (campaignError) throw campaignError;
             setCampaign(campaignData);
+
+            // Fetch Recipient Count (using customer_data)
+            const { count } = await supabase
+                .from('customer_data')
+                .select('*', { count: 'exact', head: true })
+                .eq('campaign_id', id);
+            setRecipientCount(count || 0);
 
             // Fetch Emails
             const { data: emailData } = await supabase
@@ -105,6 +120,13 @@ export const Dashboard: React.FC = () => {
                 .eq('campaign_id', id)
                 .order('scheduled_day', { ascending: true });
             if (socialData) setSocialPosts(socialData);
+
+            // Set initial tab based on status
+            if (campaignData.status === 'executing' || campaignData.status === 'paused') {
+                setActiveTab('campaign_live');
+            } else {
+                setActiveTab('overview');
+            }
 
         } catch (error) {
             console.error('Error loading dashboard:', error);
@@ -140,56 +162,49 @@ export const Dashboard: React.FC = () => {
         }
     };
 
+    const handleSendTest = async (assetId: string, type: 'email' | 'whatsapp', content: any) => {
+        setSendingTest(assetId);
+        try {
+            await triggerWebhook('send_test', {
+                campaign_id: campaign?.id,
+                action: 'send_test',
+                type,
+                content
+            });
+            alert("Test sent successfully!");
+        } catch (error) {
+            console.error("Test send failed:", error);
+            alert("Failed to send test.");
+        } finally {
+            setSendingTest(null);
+        }
+    };
+
+    const handlePauseResume = async () => {
+        if (!campaign) return;
+        try {
+            if (campaign.status === 'executing') {
+                if (confirm("Pause this campaign? Scheduled tasks will NOT execute until resumed.")) {
+                    await pauseCampaign(campaign.id);
+                    setCampaign({ ...campaign, status: 'paused' });
+                }
+            } else if (campaign.status === 'paused') {
+                await resumeCampaign(campaign.id);
+                setCampaign({ ...campaign, status: 'executing' });
+            }
+        } catch (error) {
+            console.error("Failed to toggle campaign status:", error);
+            alert("Failed to update status.");
+        }
+    };
+
     if (loading) return <Layout><div className="flex h-screen justify-center items-center text-white">Loading Dashboard...</div></Layout>;
     if (!campaign) return <Layout><div className="text-white p-8">Campaign not found</div></Layout>;
 
-    const renderTimeline = () => {
-        // Simple visual timeline of dots
-        const days = Array.from({ length: 28 }, (_, i) => i + 1);
-
-        return (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6 overflow-x-auto">
-                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">28-Day Roadmap</h3>
-                <div className="flex items-center justify-between min-w-[800px] relative">
-                    {/* Line */}
-                    <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-gray-800 -z-0"></div>
-
-                    {days.map(day => {
-                        const hasEmail = emails.some(e => e.scheduled_day === day);
-                        const hasWhatsapp = whatsappMessages.some(w => w.scheduled_day === day);
-                        const hasSocial = socialPosts.some(s => s.scheduled_day === day);
-
-                        let dotColor = "bg-gray-800";
-                        if (hasEmail) dotColor = "bg-blue-500";
-                        else if (hasWhatsapp) dotColor = "bg-green-500";
-                        else if (hasSocial) dotColor = "bg-pink-500";
-
-                        const isActionDay = hasEmail || hasWhatsapp || hasSocial;
-
-                        return (
-                            <div key={day} className="relative z-10 flex flex-col items-center gap-2 group">
-                                <div className={`w-3 h-3 rounded-full ${dotColor} ${isActionDay ? 'ring-4 ring-gray-900' : ''}`}></div>
-                                <span className={`text-[10px] ${isActionDay ? 'text-white font-bold' : 'text-gray-600'}`}>{day}</span>
-
-                                {isActionDay && (
-                                    <div className="absolute bottom-full mb-2 hidden group-hover:block bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-20">
-                                        {hasEmail && "Email "}
-                                        {hasWhatsapp && "WhatsApp "}
-                                        {hasSocial && "Post"}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-        );
-    };
+    const isLive = campaign.status === 'executing' || campaign.status === 'paused';
 
     const renderOverview = () => (
         <div className="space-y-6 animate-in fade-in">
-            {renderTimeline()}
-
             {/* Strategy Summary */}
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
                 <h3 className="text-lg font-semibold mb-4 text-white flex items-center gap-2">
@@ -243,7 +258,18 @@ export const Dashboard: React.FC = () => {
                             <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded mr-3">Day {email.scheduled_day}</span>
                             <span className="text-gray-900 font-semibold">{email.subject}</span>
                         </div>
-                        <Button variant="ghost" size="sm" className="text-gray-500">Copy HTML</Button>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700 border-indigo-300 font-medium shadow-sm"
+                                onClick={() => handleSendTest(email.id, 'email', email)}
+                                disabled={sendingTest === email.id}
+                            >
+                                <Send className="w-3 h-3 mr-1" />
+                                {sendingTest === email.id ? 'Sending...' : 'Send Test'}
+                            </Button>
+                        </div>
                     </div>
                     <div className="p-6">
                         <div className="text-xs text-gray-500 mb-4 bg-gray-50 inline-block px-2 py-1 rounded border border-gray-200">
@@ -265,7 +291,7 @@ export const Dashboard: React.FC = () => {
     const renderWhatsApp = () => (
         <div className="space-y-6 max-w-2xl mx-auto animate-in fade-in py-4">
             {whatsappMessages.map((msg) => (
-                <div key={msg.id} className="relative">
+                <div key={msg.id} className="relative group">
                     <div className="flex justify-center mb-4">
                         <span className="bg-gray-800 text-gray-400 text-[10px] px-3 py-1 rounded-full uppercase tracking-wider">
                             Day {msg.scheduled_day}
@@ -273,12 +299,23 @@ export const Dashboard: React.FC = () => {
                     </div>
 
                     <div className="flex items-end justify-end">
-                        <div className="bg-[#005c4b] text-white p-3 rounded-lg rounded-tr-none shadow-md max-w-[80%] text-sm leading-relaxed relative">
-                            {msg.message_text}
-                            <div className="text-[10px] text-gray-300 text-right mt-1 flex items-center justify-end gap-1">
-                                <span>10:00 AM</span>
-                                <CheckCircle2 className="w-3 h-3 text-blue-400" />
+                        <div className="flex flex-col gap-1 items-end max-w-[80%]">
+                            <div className="bg-[#005c4b] text-white p-3 rounded-lg rounded-tr-none shadow-md text-sm leading-relaxed relative text-left">
+                                {msg.message_text}
+                                <div className="text-[10px] text-gray-300 text-right mt-1 flex items-center justify-end gap-1">
+                                    <span>10:00 AM</span>
+                                    <CheckCircle2 className="w-3 h-3 text-blue-400" />
+                                </div>
                             </div>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-gray-500 hover:text-green-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => handleSendTest(msg.id, 'whatsapp', msg)}
+                                disabled={sendingTest === msg.id}
+                            >
+                                <Send className="w-3 h-3 mr-1" /> Send Test
+                            </Button>
                         </div>
                     </div>
                     <div className="text-right mt-1 mr-1">
@@ -315,7 +352,6 @@ export const Dashboard: React.FC = () => {
             );
         }
 
-        // Use the same video for now, or a placeholder if we had separate ad generation
         return (
             <div className="max-w-md mx-auto">
                 <VideoPlayer
@@ -342,6 +378,19 @@ export const Dashboard: React.FC = () => {
         </div>
     );
 
+    // Determine which tabs to show based on state
+    // If Live, show "Campaign Live" first
+    const tabs = [
+        ...(isLive ? [{ id: 'campaign_live', label: 'Campaign Live', icon: CheckCircle2, show: true }] : []),
+        { id: 'overview', label: 'Strategy', icon: LayoutDashboard, show: true },
+        { id: 'emails', label: 'Emails', icon: Mail, show: true },
+        { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare, show: campaign.recommended_channels.includes('whatsapp') },
+        { id: 'social', label: 'Instagram', icon: Instagram, show: campaign.recommended_channels.includes('instagram') },
+        { id: 'video_ad', label: 'Video Ad', icon: Video, show: campaign.recommended_channels.includes('video_ad') },
+        { id: 'execution_log', label: 'Execution Log', icon: LayoutDashboard, show: true }, // Always show log
+        { id: 'voice_agent', label: 'Voice Agent', icon: Mic, show: true }
+    ];
+
     return (
         <Layout>
             <div className="min-h-screen bg-black text-white">
@@ -354,7 +403,10 @@ export const Dashboard: React.FC = () => {
                         <div>
                             <h1 className="text-xl font-bold flex items-center gap-3">
                                 {campaign.product_name}
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full border uppercase tracking-wide font-bold ${campaign.status === 'executing' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-green-500/20 text-green-400 border-green-500/30'
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full border uppercase tracking-wide font-bold ${campaign.status === 'executing' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' :
+                                    campaign.status === 'paused' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                                        campaign.status === 'completed' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                                            'bg-gray-500/20 text-gray-400 border-gray-500/30'
                                     }`}>
                                     {campaign.status.replace('_', ' ')}
                                 </span>
@@ -365,9 +417,26 @@ export const Dashboard: React.FC = () => {
                         <div className="text-sm text-gray-500 mr-4 hidden md:block">
                             Budget: ₹{campaign.budget.toLocaleString()}
                         </div>
-                        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-6 shadow-lg shadow-indigo-500/20">
-                            Launch Campaign 🚀
-                        </Button>
+
+                        {/* Status Actions */}
+                        {isLive && (
+                            campaign.status === 'executing' ? (
+                                <Button
+                                    onClick={handlePauseResume}
+                                    variant="outline"
+                                    className="text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/10"
+                                >
+                                    <PauseCircle className="w-4 h-4 mr-2" /> Pause Campaign
+                                </Button>
+                            ) : (
+                                <Button
+                                    onClick={handlePauseResume}
+                                    className="bg-green-600 hover:bg-green-700 text-white"
+                                >
+                                    <PlayCircle className="w-4 h-4 mr-2" /> Resume Campaign
+                                </Button>
+                            )
+                        )}
                     </div>
                 </div>
 
@@ -418,14 +487,7 @@ export const Dashboard: React.FC = () => {
 
                         {/* Tabs */}
                         <div className="flex overflow-x-auto border-b border-gray-800 bg-gray-950/50 px-6">
-                            {[
-                                { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-                                { id: 'emails', label: 'Emails', icon: Mail },
-                                { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare, show: campaign.recommended_channels.includes('whatsapp') },
-                                { id: 'social', label: 'Instagram', icon: Instagram, show: campaign.recommended_channels.includes('instagram') },
-                                { id: 'video_ad', label: 'Video Ad', icon: Video, show: campaign.recommended_channels.includes('video_ad') },
-                                { id: 'voice_agent', label: 'Voice Agent', icon: Mic, show: true } // Always show but maybe disabled logic inside
-                            ].map(tab => {
+                            {tabs.map(tab => {
                                 if (tab.show === false) return null;
                                 const Icon = tab.icon;
                                 return (
@@ -446,12 +508,35 @@ export const Dashboard: React.FC = () => {
                         {/* Content Area */}
                         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
                             <div className="max-w-5xl mx-auto">
+
+                                {/* Launch Section (Only visible if plan_ready) */}
+                                {campaign.status === 'plan_ready' && (
+                                    <LaunchSection
+                                        campaignId={campaign.id}
+                                        recipientCount={recipientCount}
+                                        recommendedChannels={campaign.recommended_channels}
+                                        onLaunchComplete={() => {
+                                            setCampaign({ ...campaign, status: 'executing', campaign_start_date: new Date().toISOString().split('T')[0] });
+                                            setActiveTab('campaign_live');
+                                        }}
+                                    />
+                                )}
+
+                                {activeTab === 'campaign_live' && isLive && (
+                                    <CampaignTimeline
+                                        campaignId={campaign.id}
+                                        startDate={campaign.campaign_start_date || new Date().toISOString()}
+                                        isPaused={campaign.status === 'paused'}
+                                    />
+                                )}
+
                                 {activeTab === 'overview' && renderOverview()}
                                 {activeTab === 'emails' && renderEmails()}
                                 {activeTab === 'whatsapp' && renderWhatsApp()}
                                 {activeTab === 'social' && renderSocial()}
                                 {activeTab === 'video_ad' && renderVideoAd()}
                                 {activeTab === 'voice_agent' && renderVoiceAgent()}
+                                {activeTab === 'execution_log' && <ExecutionLog campaignId={campaign.id} />}
                             </div>
                         </div>
                     </div>
