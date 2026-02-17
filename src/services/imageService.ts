@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 
-const REPLICATE_API_URL = "/api/replicate/models/bytedance/seedream-4/predictions";
+const REPLICATE_API_URL = "/api/replicate/models/google/nano-banana-pro/predictions";
 
 interface ImageGenerationOptions {
   prompt: string;

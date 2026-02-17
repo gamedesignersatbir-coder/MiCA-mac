@@ -1,33 +1,73 @@
-const _HEYGEN_API_URL = "/api/heygen/v2/video/generate";
-const _HEYGEN_STATUS_URL = "/api/heygen/v1/video_status.get";
+const HEYGEN_API_URL = "/api/heygen/v1/video_agent/generate";
+const HEYGEN_STATUS_URL = "/api/heygen/v1/video_status.get";
 
 interface VideoGenerationOptions {
-    script: string;
-    avatarId?: string;
-    voiceId?: string;
+    prompt: string;
 }
 
 export async function generateVideo({
-    script,
-    avatarId: _avatarId = "Daisy-insuit-20220818",
-    voiceId: _voiceId = "007e1378fc454a9f976db570cad080e9"
+    prompt
 }: VideoGenerationOptions): Promise<string> {
+    console.log("Generating video with Video Agent prompt:", prompt);
 
-    const isApiEnabled = import.meta.env.VITE_HEYGEN_API_ENABLED === 'true';
+    try {
+        // Step 1: Initiate Video Generation
+        const response = await fetch(HEYGEN_API_URL, {
+            method: 'POST',
+            headers: {
+                'X-Api-Key': import.meta.env.VITE_HEYGEN_API_KEY,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                prompt: prompt
+            })
+        });
 
-    console.log(`[VideoService] Generating video. API Enabled: ${isApiEnabled}`);
-    console.log(`[VideoService] Script: ${script.substring(0, 50)}...`);
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HeyGen API Error: ${response.status} ${response.statusText} - ${errorText}`);
+        }
 
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 3000));
+        const data = await response.json();
+        const videoId = data.data.video_id;
 
-    if (isApiEnabled) {
-        // TODO: Implement actual HeyGen API call here
-        console.warn("[VideoService] API is enabled but implementation is missing. Falling back to demo video.");
+        if (!videoId) {
+            throw new Error("No video_id returned from HeyGen");
+        }
+
+        // Step 2: Poll for completion
+        let status = "processing";
+        let videoUrl = "";
+
+        while (status === "processing" || status === "pending") {
+            await new Promise(resolve => setTimeout(resolve, 5000)); // Poll every 5s
+
+            const statusResponse = await fetch(`${HEYGEN_STATUS_URL}?video_id=${videoId}`, {
+                headers: {
+                    'X-Api-Key': import.meta.env.VITE_HEYGEN_API_KEY
+                }
+            });
+
+            if (!statusResponse.ok) {
+                console.warn("Status check failed, retrying...");
+                continue;
+            }
+
+            const statusData = await statusResponse.json();
+            status = statusData.data.status;
+
+            if (status === "completed") {
+                videoUrl = statusData.data.video_url;
+            } else if (status === "failed") {
+                throw new Error(`Video generation failed: ${statusData.data.error || "Unknown error"}`);
+            }
+        }
+
+        return videoUrl;
+    } catch (error) {
+        console.error("Video Generation Service Error:", error);
+        throw error;
     }
-
-    // Return fallback/demo video
-    return "https://dynamic.heygen.ai/aws_pacific/avatar_tmp/1438b17eeed545b981fec8863f8d729d/v5848aa759798480c82ced7c4de123d30/820d52f6f343458792ddf22cfc4ed77e.mp4";
 }
 
 export async function checkVideoStatus(_videoId: string): Promise<string> {

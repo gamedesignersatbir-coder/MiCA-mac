@@ -20,6 +20,7 @@ interface Campaign {
     tone_custom_words: string;
     budget: number;
     recommended_channels: string[];
+    creator_name?: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any;
 }
@@ -366,42 +367,72 @@ Rule: Distribute posts evenly across days 1 to 28.`;
         setProgressText("");
     };
 
-    // --- API CALL 5: VIDEO SCRIPT ---
+    // --- API CALL 5: VIDEO AGENT PROMPT ---
     const generateVideoScript = async (campaignData: Campaign, strategy: any) => {
+        const creatorName = campaignData.creator_name || 'Business Owner';
+
         const prompt = `CONTEXT:
+CREATOR_NAME: ${creatorName}
 PRODUCT: ${campaignData.product_name}
 STRATEGY SUMMARY: ${strategy.strategy_summary}
 CHANNELS: ${campaignData.recommended_channels.join(', ')}
 
-Please write the video script based on the system instructions.`;
+Please write the detailed Video Agent prompt.`;
 
-        const systemPrompt = `You are MiCA's video scriptwriter. Write a 60-second video script for an AI avatar spokesperson to present a marketing campaign summary.
+        const systemPrompt = `You are an expert video director for AI marketing campaigns. Write a comprehensive prompt for the HeyGen Video Agent.
 
-The avatar will be speaking directly to the business owner, presenting their campaign strategy in an encouraging, professional tone.
+The prompt must follow this EXACT structure:
 
-Respond in valid JSON only.
+Create a [Duration]-second vertical (9:16) video with [Avatar Description]. Background: [Background Description].
+SCRIPT:
+[SCENE 1 - Opening (0-12 seconds)]
+Avatar speaks with [Emotion/Tone]:
+"[Script Line 1]"
+[Visual: Text overlay - "Key Point 1"]
+[SCENE 2 - The Strategy (12-35 seconds)]
+Avatar gestures [Action]:
+"[Script Line 2]"
+[Visual: Split screen showing [Details]]
+... and so on.
 
-Response format:
+Requirements:
+1.  **Format**: Vertical (9:16) aspect ratio for mobile viewing.
+2.  **Avatar**: Professional Indian male or female (based on brand tone), 30-38 years, smart casual. Confident and approachable.
+3.  **Background**: Modern home studio or office, plants, soft lighting.
+4.  **Script Content & Tone**:
+    -   **Address the Creator**: Start with "Namaste ${creatorName}!" or "Hello ${creatorName}!"
+    -   **Context**: Acknowledge their specific product (${campaignData.product_name}) and the challenge of finding customers.
+    -   **The Solution**: Present this campaign/strategy as the solution MiCA has built FOR THEM.
+    -   **The Strategy**: Explain the specific channels (Emails, WhatsApp, etc.) as tools working to grow their business.
+    -   **Closing**: End with a motivating line about launching their success.
+    -   **Style**: Speak like a knowledgeable marketing consultant talking to a client. Encouraging, professional, warm.
+5.  **Duration**: Approx 60-75 seconds.
+
+Return ONLY valid JSON in this format:
 {
-  "script": "The complete spoken script. Write in natural, conversational spoken English. NOT formal report language. Include natural pauses indicated by '...' where appropriate. Must be 120-150 words (60 seconds at normal speaking pace). Address the viewer directly as 'you' and 'your'."
-}
-
-Rules:
-- Start with a warm greeting and the product name
-- Briefly describe the campaign approach (1-2 sentences)
-- Highlight the 3 most important tactics across the 4 weeks
-- Mention the channels being used
-- End with an encouraging, motivational closing
-- Keep it under 150 words (CRITICAL — longer scripts = longer/expensive videos)
-- Speak naturally — contractions, simple words, like a friendly marketing consultant
-- Reference Indian context naturally if the product is India-focused
-- Do NOT use any visual directions or camera cues — this is audio/speech only`;
+  "video_agent_prompt": "The entire formatted text block as described above, including the 'Create a...' header and 'SCRIPT:' sections. NOT just the spoken words."
+}`;
 
         const response = await callAI({ systemPrompt, userPrompt: prompt, temperature: 0.7 });
-        const scriptJson = JSON.parse(response.replace(/```json\n?|\n?```/g, '').trim());
 
-        await supabase.from('campaigns').update({ video_script: scriptJson.script }).eq('id', campaignData.id);
-        return scriptJson.script;
+        let scriptJson;
+        try {
+            const cleanResponse = response.replace(/```json\n?|\n?```/g, '').trim();
+            // Attempt to clean control characters that might break JSON (newlines inside strings)
+            // This is a simple heuristic: replace literal newlines with \n if they seem to be in a string.
+            // Actually, simplest is to just rely on the AI, but if it fails, try a relaxed parse or just fail gracefully.
+            scriptJson = JSON.parse(cleanResponse);
+        } catch (e) {
+            console.error("JSON Parse Error in Video Script:", e);
+            console.log("Raw Response:", response);
+            // Fallback: create a simple object with the raw response as the prompt
+            scriptJson = { video_agent_prompt: response.replace(/```json\n?|\n?```/g, '').trim() };
+        }
+
+        // We store the full prompt in video_script column for now, or we might need a new column. 
+        // For now, using 'video_script' column to store the Prompt is acceptable as it's a text field.
+        await supabase.from('campaigns').update({ video_script: scriptJson.video_agent_prompt }).eq('id', campaignData.id);
+        return scriptJson.video_agent_prompt;
     };
 
     // --- API CALL 6: VIDEO GENERATION ---
@@ -418,7 +449,8 @@ Rules:
         try {
             await supabase.from('campaigns').update({ video_status: 'generating' }).eq('id', campaignData.id);
 
-            const videoUrl = await generateVideo({ script });
+            // 'script' variable here contains the full video agent prompt generated in the previous step
+            const videoUrl = await generateVideo({ prompt: script });
 
             await supabase.from('campaigns').update({
                 video_url: videoUrl,
@@ -444,7 +476,12 @@ Rules:
     const handleRetry = () => {
         if (campaign) {
             generationStartedRef.current = false;
-            startGeneration(campaign);
+
+            if (DEMO_MODE_ENABLED()) {
+                simulateGeneration();
+            } else {
+                startGeneration(campaign);
+            }
         }
     };
 

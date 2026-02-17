@@ -18,6 +18,7 @@ export const CreateCampaign: React.FC = () => {
 
     // Form State
     const [formData, setFormData] = useState({
+        creatorName: '',
         productName: '',
         productDescription: '',
         productLinks: '',
@@ -124,8 +125,9 @@ export const CreateCampaign: React.FC = () => {
                     budget: formData.budget,
                     location: formData.location,
                     product_links: formData.productLinks,
-                    tone: formData.tone === 'Custom' ? formData.toneCustomWords : formData.tone, // Simplify usage
+                    tone: formData.tone === 'Custom' ? formData.toneCustomWords : formData.tone,
                     tone_custom_words: formData.tone === 'Custom' ? formData.toneCustomWords : null,
+                    creator_name: formData.creatorName,
                     status: 'tone_preview',
                 })
                 .select()
@@ -187,8 +189,18 @@ export const CreateCampaign: React.FC = () => {
                     {/* Section 1: Product Details */}
                     <div className="space-y-6">
                         <h2 className="text-xl font-semibold flex items-center gap-2 border-b border-gray-800 pb-2">
-                            <FileText className="w-5 h-5 text-indigo-400" /> Product Details
+                            <FileText className="w-5 h-5 text-indigo-400" /> Basic Details
                         </h2>
+
+                        <Input
+                            label="Your Name"
+                            name="creatorName"
+                            value={formData.creatorName}
+                            onChange={handleInputChange}
+                            required
+                            placeholder="e.g. Arjun"
+                            helperText="This name will be used in your personalized video."
+                        />
 
                         <Input
                             label="Product / Event Name"
