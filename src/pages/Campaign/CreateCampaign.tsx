@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Papa from 'papaparse';
-import { Upload, FileText, Users, Calendar, MapPin, Sparkles, AlertCircle, Rocket } from 'lucide-react';
+import { Upload, FileText, Users, Calendar, MapPin, Sparkles, AlertCircle, Rocket, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../../components/ui/Button';
@@ -240,17 +240,25 @@ export const CreateCampaign: React.FC = () => {
                                     type="file"
                                     id="doc-upload"
                                     className="hidden"
-                                    accept=".pdf,.docx"
+                                    accept=".pdf,.docx,.md,.txt"
                                     onChange={handleDocumentUpload}
                                 />
                                 <label htmlFor="doc-upload" className="cursor-pointer flex flex-col items-center gap-2">
                                     <Upload className="w-8 h-8 text-gray-400" />
                                     <span className="text-indigo-400 font-medium">Click to upload</span>
-                                    <span className="text-xs text-gray-500">PDF or DOCX (Max 10MB)</span>
+                                    <span className="text-xs text-gray-500">PDF, DOCX, MD, or TXT (Max 10MB)</span>
                                 </label>
                                 {documentFile && (
                                     <div className="mt-4 flex items-center justify-center gap-2 text-sm text-green-400 bg-green-900/20 py-1 px-3 rounded-full">
                                         <FileText className="w-4 h-4" /> {documentFile.name}
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.preventDefault(); setDocumentFile(null); const input = document.getElementById('doc-upload') as HTMLInputElement; if (input) input.value = ''; }}
+                                            className="ml-2 p-0.5 rounded-full hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors"
+                                            title="Remove file"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
                                     </div>
                                 )}
                             </div>
@@ -365,6 +373,19 @@ export const CreateCampaign: React.FC = () => {
                                 <span className="text-blue-400 font-medium">Upload Customer List (CSV)</span>
                                 <span className="text-xs text-gray-500">Columns: name, email, phone</span>
                             </label>
+                            {customerFile && (
+                                <div className="mt-4 flex items-center justify-center gap-2 text-sm text-green-400 bg-green-900/20 py-1 px-3 rounded-full">
+                                    <FileText className="w-4 h-4" /> {customerFile.name}
+                                    <button
+                                        type="button"
+                                        onClick={(e) => { e.preventDefault(); setCustomerFile(null); setCsvPreview([]); const input = document.getElementById('csv-upload') as HTMLInputElement; if (input) input.value = ''; }}
+                                        className="ml-2 p-0.5 rounded-full hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors"
+                                        title="Remove file"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         {csvPreview.length > 0 && (

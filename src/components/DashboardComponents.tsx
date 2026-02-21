@@ -55,8 +55,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     if (!videoUrl) {
         return (
             <div className={`aspect-[9/16] bg-gray-900 rounded-2xl flex flex-col items-center justify-center p-6 border border-gray-800 ${className}`}>
-                <p className="text-gray-500">Video unavailable</p>
-                {onRetry && <button onClick={onRetry} className="mt-2 text-indigo-400 text-sm">Retry</button>}
+                <div className="text-3xl mb-3">🎬</div>
+                <p className="text-gray-400 font-medium mb-1">Video Not Ready Yet</p>
+                <p className="text-gray-500 text-xs text-center mb-4">The video may still be processing on our servers.</p>
+                {onRetry && (
+                    <button onClick={onRetry} className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1.5 bg-indigo-500/10 px-4 py-2 rounded-lg hover:bg-indigo-500/20 transition-colors">
+                        <RefreshCw className="w-3 h-3" /> Check Status
+                    </button>
+                )}
             </div>
         );
     }
@@ -122,6 +128,7 @@ interface SocialPostCardProps {
 
 export const SocialPostCard: React.FC<SocialPostCardProps> = ({ post, onGenerateImage, generatingImageId }) => {
     const [imageError, setImageError] = React.useState(false);
+    const [expanded, setExpanded] = React.useState(false);
 
     return (
         <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-gray-700 transition-colors">
@@ -208,9 +215,15 @@ export const SocialPostCard: React.FC<SocialPostCardProps> = ({ post, onGenerate
 
             {/* Content Area */}
             <div className="p-4">
-                <p className="text-sm text-gray-300 line-clamp-3 mb-3 group-hover:line-clamp-none transition-all">
+                <p className={`text-sm text-gray-300 mb-1 ${expanded ? '' : 'line-clamp-3'}`}>
                     {post.caption}
                 </p>
+                <button
+                    onClick={() => setExpanded(!expanded)}
+                    className="text-xs text-indigo-400 hover:text-indigo-300 mb-3 cursor-pointer"
+                >
+                    {expanded ? 'Show less' : 'Read more'}
+                </button>
                 <div className="flex flex-wrap gap-1">
                     {post.hashtags && post.hashtags.split(' ').map((tag: string, i: number) => (
                         <span key={i} className="text-[10px] text-blue-400">{tag}</span>

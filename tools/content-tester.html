@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MiCA | Content Quality Tester</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #030712;
+            color: white;
+        }
+
+        .glass {
+            background: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .tab-btn {
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: rgba(99, 102, 241, 0.2);
+            color: #818cf8;
+            border: 1px solid rgba(99, 102, 241, 0.4);
+        }
+
+        .tab-btn.inactive {
+            background: rgba(31, 41, 55, 0.5);
+            color: #6b7280;
+            border: 1px solid transparent;
+        }
+
+        .result-card {
+            background: rgba(17, 24, 39, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .wa-bubble {
+            background: #DCF8C6;
+            color: #1a1a1a;
+            border-radius: 12px 12px 0 12px;
+            padding: 12px 16px;
+            max-width: 85%;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .ig-card {
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .email-card {
+            background: #fff;
+            color: #111;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body class="min-h-screen">
+
+    <!-- Header -->
+    <header
+        class="border-b border-gray-800 bg-gray-900/60 px-6 py-4 flex items-center justify-between sticky top-0 z-50 backdrop-blur-md">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-indigo-500/10 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path
+                        d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-base font-bold">MiCA Content Quality Tester</h1>
+                <p class="text-[10px] text-gray-500 uppercase tracking-tight">Test campaign prompts without full
+                    generation</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <input type="password" id="apiKey" placeholder="OpenRouter API Key"
+                class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs w-64 outline-none focus:ring-1 focus:ring-indigo-500">
+            <button id="saveKey"
+                class="text-[10px] font-bold bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-600/40 px-3 py-1.5 rounded-lg">SAVE
+                KEY</button>
+        </div>
+    </header>
+
+    <div class="flex h-[calc(100vh-65px)]">
+
+        <!-- Left Panel: Campaign Parameters -->
+        <aside
+            class="w-80 flex-shrink-0 border-r border-gray-800 flex flex-col bg-gray-950/50 overflow-y-auto scrollbar">
+            <div class="p-5">
+                <h2 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-4">Campaign Parameters</h2>
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-gray-500 block mb-1">Product Name</label>
+                        <input id="product_name" type="text" value="HAppiness Coaching Program"
+                            class="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-gray-500 block mb-1">Product
+                            Description</label>
+                        <textarea id="product_description" rows="3"
+                            class="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 resize-none">A 6-week online coaching program helping working professionals in India manage stress, build resilience, and find joy in everyday life. Includes weekly live sessions, daily exercises, and a private community.</textarea>
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-gray-500 block mb-1">Target Audience</label>
+                        <textarea id="target_audience" rows="2"
+                            class="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 resize-none">Working professionals aged 28-45 in Indian cities, experiencing burnout and work-life imbalance, looking for practical mental wellness tools</textarea>
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-gray-500 block mb-1">Location</label>
+                        <input id="location" type="text" value="Pan India"
+                            class="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-gray-500 block mb-1">Budget (₹)</label>
+                        <input id="budget" type="number" value="15000"
+                            class="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-gray-500 block mb-1">Tone</label>
+                        <select id="tone"
+                            class="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 text-white">
+                            <option>Professional</option>
+                            <option selected>Warm &amp; Inspirational</option>
+                            <option>Urgent</option>
+                            <option>Casual</option>
+                            <option>Custom</option>
+                        </select>
+                    </div>
+                    <div id="customWordsSection" class="hidden">
+                        <label class="text-[10px] uppercase font-bold text-gray-500 block mb-1">Custom Tone Words /
+                            Instructions</label>
+                        <input id="tone_custom_words" type="text"
+                            placeholder="e.g. playful, use Hindi words occasionally, avoid corporate jargon"
+                            class="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-gray-500 block mb-1">Campaign Name (from
+                            strategy)</label>
+                        <input id="campaign_name" type="text" value="Find Your Flow"
+                            class="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-gray-500 block mb-1">Strategy Summary (from
+                            strategy)</label>
+                        <textarea id="strategy_summary" rows="3"
+                            class="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 resize-none">The campaign targets burnt-out urban professionals with a message of sustainable happiness through science-backed coaching. We position HAppiness as the antidote to hustle culture.</textarea>
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-gray-500 block mb-1">Target Persona (from
+                            strategy)</label>
+                        <textarea id="target_persona" rows="3"
+                            class="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 resize-none">Priya, 34, a project manager in Bengaluru. She works 10-hour days, loves her job but feels constantly exhausted. She secretly fears she's missing out on life. She's been meaning to 'work on herself' for 2 years but doesn't know where to start.</textarea>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right: Test Area -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+
+            <!-- Tab Bar + Run Button -->
+            <div
+                class="border-b border-gray-800 bg-gray-900/40 px-6 py-3 flex items-center justify-between flex-shrink-0">
+                <div class="flex gap-2">
+                    <button class="tab-btn active" onclick="switchTab('emails')" id="tab-emails">✉️ Emails</button>
+                    <button class="tab-btn inactive" onclick="switchTab('whatsapp')" id="tab-whatsapp">💬
+                        WhatsApp</button>
+                    <button class="tab-btn inactive" onclick="switchTab('instagram')" id="tab-instagram">📸
+                        Instagram</button>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div id="statusDot" class="hidden items-center gap-2 text-xs text-indigo-400">
+                        <svg class="spinner w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                            </circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        <span id="statusText">Generating...</span>
+                    </div>
+                    <button id="runBtn" onclick="runTest()"
+                        class="bg-indigo-600 hover:bg-indigo-500 px-5 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 shadow-lg shadow-indigo-500/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                        Run Test
+                    </button>
+                </div>
+            </div>
+
+            <!-- Output Area -->
+            <div class="flex-1 overflow-y-auto scrollbar p-6">
+
+                <!-- Empty State -->
+                <div id="emptyState" class="flex flex-col items-center justify-center h-full text-center opacity-30">
+                    <div class="p-8 border border-gray-800 rounded-3xl mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                            class="text-gray-700">
+                            <path
+                                d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+                        </svg>
+                    </div>
+                    <p class="text-gray-500 text-sm">Select a tab, fill in parameters, and click Run Test</p>
+                </div>
+
+                <!-- Results -->
+                <div id="results" class="hidden space-y-6 fade-in"></div>
+
+                <!-- Raw JSON toggle -->
+                <div id="rawSection" class="hidden mt-6">
+                    <button onclick="toggleRaw()"
+                        class="text-xs text-gray-600 hover:text-gray-400 mb-2 flex items-center gap-1">
+                        <span id="rawToggleTxt">▶ Show Raw JSON</span>
+                    </button>
+                    <pre id="rawJson"
+                        class="hidden bg-black/50 border border-gray-800 rounded-lg p-4 text-xs font-mono text-indigo-300 overflow-x-auto"></pre>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let currentTab = 'emails';
+        let rawVisible = false;
+
+        // On load
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('apiKey').value = localStorage.getItem('mica_content_api_key') || '';
+            document.getElementById('saveKey').onclick = () => {
+                localStorage.setItem('mica_content_api_key', document.getElementById('apiKey').value);
+                alert('API Key saved.');
+            };
+            document.getElementById('tone').onchange = (e) => {
+                document.getElementById('customWordsSection').classList.toggle('hidden', e.target.value !== 'Custom');
+            };
+        });
+
+        function switchTab(tab) {
+            currentTab = tab;
+            ['emails', 'whatsapp', 'instagram'].forEach(t => {
+                document.getElementById(`tab-${t}`).className = `tab-btn ${t === tab ? 'active' : 'inactive'}`;
+            });
+            // Clear results when switching tabs
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('results').classList.add('hidden');
+            document.getElementById('rawSection').classList.add('hidden');
+            document.getElementById('emptyState').classList.remove('hidden');
+        }
+
+        function getParams() {
+            const tone = document.getElementById('tone').value;
+            const customWords = document.getElementById('tone_custom_words').value;
+            const toneDescription = tone === 'Custom' ? `Custom — ${customWords}` : tone;
+            return {
+                product_name: document.getElementById('product_name').value,
+                product_description: document.getElementById('product_description').value,
+                target_audience: document.getElementById('target_audience').value,
+                location: document.getElementById('location').value,
+                budget: parseInt(document.getElementById('budget').value) || 10000,
+                tone, tone_custom_words: customWords, toneDescription,
+                campaign_name: document.getElementById('campaign_name').value,
+                strategy_summary: document.getElementById('strategy_summary').value,
+                target_persona: document.getElementById('target_persona').value
+            };
+        }
+
+        function buildEmailPrompt(p) {
+            return {
+                system: `You are MiCA, an expert AI marketing email copywriter specializing in campaigns for small businesses and entrepreneurs in India. You write complete, high-converting marketing emails that match the requested tone exactly. You understand Indian consumer psychology, cultural references, and what drives engagement in the Indian market. Use ₹ for currency, write in a way that resonates with Indian audiences. Return ONLY valid JSON. No markdown, no preamble.`,
+                user: `Generate 5 complete marketing emails for this campaign. Each email must be a FULL, ready-to-send email — not a sample or a draft.
+
+CAMPAIGN CONTEXT:
+PRODUCT NAME: ${p.product_name}
+PRODUCT DESCRIPTION: ${p.product_description}
+TARGET AUDIENCE: ${p.target_audience}
+LOCATION: ${p.location || 'India (general)'}
+BUDGET: ₹${p.budget.toLocaleString('en-IN')}
+CAMPAIGN TONE: ${p.toneDescription}
+CAMPAIGN NAME: ${p.campaign_name}
+STRATEGY SUMMARY: ${p.strategy_summary}
+TARGET PERSONA: ${p.target_persona}
+
+Output JSON format:
+{
+  "emails": [
+    {
+      "template_order": 1,
+      "subject": "string — compelling subject line (max 60 chars)",
+      "pre_header": "string — preview text that complements the subject (max 90 chars)",
+      "body": "string — complete HTML email body using <p>, <br>, <strong>, <ul>, <li>. Must include: greeting, 2-3 paragraphs of engaging content, and a closing paragraph that leads into the CTA. Write in the exact campaign tone. Reference the product and audience specifically. Use ₹ for currency. Aim for 200-300 words of body content.",
+      "cta_text": "string — clear, action-oriented CTA button text (max 5 words)",
+      "scheduled_day": 1
+    }
+  ]
+}
+
+Rules:
+- 5 emails total, spread over 28 days (e.g. Day 1, 5, 10, 18, 26)
+- Each email must serve a distinct purpose: welcome → educate → proof/testimonial → urgency → last-chance
+- Match the tone EXACTLY: ${p.toneDescription}
+- Write for the Indian market — use ₹ for currency, reference Indian cultural context where relevant
+- Every email must be complete and ready to send — no placeholders like [Name] or [Link]
+- Open each email in a way that matches the tone`
+            };
+        }
+
+        function buildWhatsAppPrompt(p) {
+            return {
+                system: `You are MiCA, an expert WhatsApp marketing copywriter for Indian small businesses. You write WhatsApp messages that feel personal and human — like they come from a trusted local business, not a faceless corporation. Your messages are conversational, warm, culturally relevant to India, and always include a clear next step for the reader. You match the campaign tone exactly. Return ONLY valid JSON. No markdown, no preamble.`,
+                user: `Generate 12 complete WhatsApp messages for a 4-week marketing campaign. Each message must be a COMPLETE, ready-to-send WhatsApp message — personal, conversational, and action-oriented.
+
+CAMPAIGN CONTEXT:
+PRODUCT NAME: ${p.product_name}
+PRODUCT DESCRIPTION: ${p.product_description}
+TARGET AUDIENCE: ${p.target_audience}
+LOCATION: ${p.location || 'India (general)'}
+BUDGET: ₹${p.budget.toLocaleString('en-IN')}
+CAMPAIGN TONE: ${p.toneDescription}
+
+Output JSON: { "whatsapp_messages": [{ "message_order": 1, "message_text": "string", "message_type": "string", "scheduled_day": 1 }] }
+
+Content Rules for each message:
+- Length: 60-120 words per message (conversational length, not too long)
+- Must feel personal — like a message from a trusted friend or local business owner, NOT a corporate blast
+- Include at least 1 relevant emoji per message (naturally placed, not excessive)
+- Every message must have a clear CTA (e.g. "Reply YES", "Click here", "DM us", "Call now", "Visit today")
+- Write in the exact tone: ${p.toneDescription}
+- Use ₹ for currency, reference Indian context where relevant
+- message_type options: announcement | follow_up | offer | testimonial | reminder | engagement
+- Vary the message types across the 12 messages to keep the sequence fresh
+- Distribute messages across days 1 to 28 (e.g., Day 1, 3, 5, 7, 10, 12, 14, 17, 19, 21, 24, 28)`
+            };
+        }
+
+        function buildInstagramPrompt(p) {
+            return {
+                system: `You are MiCA, an expert Instagram content strategist for Indian small businesses and entrepreneurs. You create Instagram captions that stop the scroll, build genuine connection, and drive action. Your captions match the requested tone perfectly, use culturally relevant language for the Indian market, and always include a strong call-to-action. You know how to balance storytelling with sales. Return ONLY valid JSON. No markdown, no preamble.`,
+                user: `Generate 15 complete Instagram posts for a 4-week marketing campaign. Each post must be a COMPLETE, scroll-stopping caption — ready to publish as-is.
+
+CAMPAIGN CONTEXT:
+PRODUCT NAME: ${p.product_name}
+PRODUCT DESCRIPTION: ${p.product_description}
+TARGET AUDIENCE: ${p.target_audience}
+LOCATION: ${p.location || 'India (general)'}
+BUDGET: ₹${p.budget.toLocaleString('en-IN')}
+CAMPAIGN TONE: ${p.toneDescription}
+
+Output JSON: { "social_posts": [{ "post_order": 1, "caption": "string", "hashtags": "string", "scheduled_day": 1, "image_suggestion": "string" }] }
+
+Content Rules for each post:
+- caption: 150-220 words. Must be scroll-stopping — open with a hook (question, bold statement, or relatable observation). Include 2-3 short paragraphs. End with a clear CTA ("Comment below", "DM us", "Link in bio", "Save this post", etc.)
+- hashtags: 5-8 relevant hashtags as a single string (e.g. "#SmallBusiness #MadeInIndia #..."). Mix broad and niche tags. Include at least 1-2 India-specific hashtags.
+- image_suggestion: 1-2 sentence description of the ideal visual for this post (used to generate the image)
+- Write in the exact tone: ${p.toneDescription}
+- Use ₹ for currency, Indian cultural references where relevant
+- Vary post types across the 15 posts: product showcase, behind-the-scenes, testimonial/social proof, educational/tips, offer/promotion, storytelling
+- Distribute posts evenly across days 1 to 28`
+            };
+        }
+
+        async function runTest() {
+            const key = document.getElementById('apiKey').value;
+            if (!key) return alert('Paste your OpenRouter API key in the header first.');
+
+            const p = getParams();
+            let prompt;
+            if (currentTab === 'emails') prompt = buildEmailPrompt(p);
+            else if (currentTab === 'whatsapp') prompt = buildWhatsAppPrompt(p);
+            else prompt = buildInstagramPrompt(p);
+
+            // Show loading
+            document.getElementById('runBtn').disabled = true;
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('results').classList.add('hidden');
+            document.getElementById('rawSection').classList.add('hidden');
+            document.getElementById('statusDot').classList.remove('hidden');
+            document.getElementById('statusDot').classList.add('flex');
+            document.getElementById('statusText').textContent = 'Calling AI (this takes ~15-30 seconds)...';
+
+            try {
+                const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${key}`,
+                        "Content-Type": "application/json",
+                        "X-Title": "MiCA Content Tester",
+                        "HTTP-Referer": window.location.origin
+                    },
+                    body: JSON.stringify({
+                        model: "anthropic/claude-3.5-sonnet",
+                        messages: [
+                            { role: "system", content: prompt.system },
+                            { role: "user", content: prompt.user }
+                        ],
+                        temperature: currentTab === 'emails' ? 0.7 : 0.8,
+                        max_tokens: 8000
+                    })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.error?.message || `API Error: ${res.status}`);
+                }
+
+                const data = await res.json();
+                const content = data.choices[0].message.content;
+                const cleanJson = content.replace(/```json\n?|\n?```/g, '').trim();
+                const firstBrace = cleanJson.indexOf('{');
+                const lastBrace = cleanJson.lastIndexOf('}');
+                const parsed = JSON.parse(cleanJson.substring(firstBrace, lastBrace + 1));
+
+                document.getElementById('rawJson').textContent = JSON.stringify(parsed, null, 2);
+                document.getElementById('rawSection').classList.remove('hidden');
+
+                renderResults(parsed);
+
+            } catch (err) {
+                alert(`Error: ${err.message}`);
+            } finally {
+                document.getElementById('runBtn').disabled = false;
+                document.getElementById('statusDot').classList.add('hidden');
+                document.getElementById('statusDot').classList.remove('flex');
+            }
+        }
+
+        function renderResults(data) {
+            const container = document.getElementById('results');
+            container.innerHTML = '';
+
+            if (currentTab === 'emails' && data.emails) {
+                data.emails.forEach((email, i) => {
+                    container.innerHTML += `
+                    <div class="email-card fade-in">
+                        <div class="bg-gray-100 px-5 py-3 flex justify-between items-center border-b border-gray-200">
+                            <div class="text-xs font-bold text-gray-500">EMAIL ${i + 1} — Day ${email.scheduled_day}</div>
+                            <span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">FULL CAMPAIGN EMAIL</span>
+                        </div>
+                        <div class="p-5">
+                            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wide mb-0.5">Subject Line</p>
+                            <p class="font-bold text-gray-900 mb-1">${email.subject}</p>
+                            <p class="text-[11px] text-gray-500 mb-4 italic">${email.pre_header}</p>
+                            <div class="border-t border-gray-100 pt-4 text-sm text-gray-700 leading-relaxed">${email.body}</div>
+                            <div class="mt-4 pt-3 border-t border-gray-100">
+                                <span class="inline-block bg-indigo-600 text-white text-xs font-bold px-5 py-2 rounded-lg">${email.cta_text}</span>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+            }
+
+            else if (currentTab === 'whatsapp' && data.whatsapp_messages) {
+                container.innerHTML = `<div class="grid grid-cols-2 gap-4">`;
+                data.whatsapp_messages.forEach((msg, i) => {
+                    container.innerHTML += `
+                    <div class="fade-in" style="animation-delay:${i * 0.05}s">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[9px] font-bold text-gray-600 uppercase bg-gray-800 px-2 py-0.5 rounded">${msg.message_type || 'message'} · Day ${msg.scheduled_day}</span>
+                            <span class="text-[9px] text-gray-600">#${msg.message_order}</span>
+                        </div>
+                        <div class="bg-[#E5DDD5] rounded-xl p-4">
+                            <div class="flex justify-end">
+                                <div class="wa-bubble">${msg.message_text}</div>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+                container.innerHTML += `</div>`;
+            }
+
+            else if (currentTab === 'instagram' && data.social_posts) {
+                container.innerHTML = `<div class="grid grid-cols-2 gap-4">`;
+                data.social_posts.forEach((post, i) => {
+                    container.innerHTML += `
+                    <div class="ig-card fade-in" style="animation-delay:${i * 0.05}s">
+                        <div class="bg-gray-900 px-4 py-2.5 flex justify-between items-center border-b border-gray-800">
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 rounded-full bg-gradient-to-br from-pink-500 to-purple-600"></div>
+                                <span class="text-xs font-bold text-white">@yourbrand</span>
+                            </div>
+                            <span class="text-[9px] bg-pink-500/20 text-pink-300 px-2 py-0.5 rounded-full font-bold">Day ${post.scheduled_day}</span>
+                        </div>
+                        <div class="bg-gray-800 aspect-square flex items-center justify-center text-gray-500 text-xs text-center p-4">
+                            <span class="opacity-60">📸 ${post.image_suggestion || 'Image'}</span>
+                        </div>
+                        <div class="p-4">
+                            <p class="text-sm text-gray-200 leading-relaxed mb-3">${post.caption}</p>
+                            <p class="text-xs text-blue-400">${post.hashtags}</p>
+                        </div>
+                    </div>`;
+                });
+                container.innerHTML += `</div>`;
+            }
+
+            else {
+                container.innerHTML = `<div class="result-card text-yellow-400 text-sm">Unexpected response format. Check Raw JSON below.</div>`;
+            }
+
+            container.classList.remove('hidden');
+        }
+
+        function toggleRaw() {
+            rawVisible = !rawVisible;
+            document.getElementById('rawJson').classList.toggle('hidden', !rawVisible);
+            document.getElementById('rawToggleTxt').textContent = rawVisible ? '▼ Hide Raw JSON' : '▶ Show Raw JSON';
+        }
+    </script>
+</body>
+
+</html>

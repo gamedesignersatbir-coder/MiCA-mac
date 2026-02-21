@@ -78,6 +78,30 @@ export const Dashboard: React.FC = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
+    // Poll for video completion when video is still generating
+    useEffect(() => {
+        if (!campaign || campaign.video_status !== 'generating') return;
+
+        const interval = setInterval(async () => {
+            try {
+                const { data } = await supabase
+                    .from('campaigns')
+                    .select('video_url, video_status')
+                    .eq('id', campaign.id)
+                    .single();
+
+                if (data && data.video_status !== 'generating') {
+                    setCampaign(prev => prev ? { ...prev, video_url: data.video_url, video_status: data.video_status } : prev);
+                    clearInterval(interval);
+                }
+            } catch (err) {
+                console.error('Video status poll error:', err);
+            }
+        }, 30000); // Poll every 30 seconds
+
+        return () => clearInterval(interval);
+    }, [campaign?.video_status, campaign?.id]);
+
     const fetchData = async () => {
         try {
             if (!id) return;
@@ -498,7 +522,20 @@ export const Dashboard: React.FC = () => {
                             <VideoPlayer
                                 videoUrl={campaign.video_url}
                                 isGenerating={campaign.video_status === 'generating'}
-                                onRetry={() => window.location.reload()}
+                                onRetry={async () => {
+                                    try {
+                                        const { data } = await supabase
+                                            .from('campaigns')
+                                            .select('video_url, video_status')
+                                            .eq('id', campaign.id)
+                                            .single();
+                                        if (data) {
+                                            setCampaign(prev => prev ? { ...prev, video_url: data.video_url, video_status: data.video_status } : prev);
+                                        }
+                                    } catch (err) {
+                                        console.error('Video retry fetch error:', err);
+                                    }
+                                }}
                                 script={campaign.video_script}
                             />
                         </div>
@@ -558,12 +595,15 @@ export const Dashboard: React.FC = () => {
                         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
                             <div className="max-w-5xl mx-auto">
 
-                                {/* Launch Section (Only visible if plan_ready) */}
-                                {campaign.status === 'plan_ready' && (
+                                {/* Launch Section (Only visible on Strategy tab when plan_ready) */}
+                                {campaign.status === 'plan_ready' && activeTab === 'overview' && (
                                     <LaunchSection
                                         campaignId={campaign.id}
                                         recipientCount={recipientCount}
                                         recommendedChannels={campaign.recommended_channels}
+                                        emailCount={emails.length}
+                                        whatsappCount={whatsappMessages.length}
+                                        socialCount={socialPosts.length}
                                         onLaunchComplete={() => {
                                             // In Demo Mode, update the global object so state persists during navigation
                                             if (DEMO_MODE_ENABLED()) {

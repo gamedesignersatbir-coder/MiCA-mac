@@ -7,6 +7,9 @@ interface LaunchSectionProps {
     campaignId: string;
     recipientCount: number;
     recommendedChannels: string[];
+    emailCount: number;
+    whatsappCount: number;
+    socialCount: number;
     onLaunchComplete: () => void;
 }
 
@@ -14,6 +17,9 @@ export const LaunchSection: React.FC<LaunchSectionProps> = ({
     campaignId,
     recipientCount,
     recommendedChannels,
+    emailCount,
+    whatsappCount,
+    socialCount,
     onLaunchComplete
 }) => {
     const [isLaunching, setIsLaunching] = useState(false);
@@ -64,18 +70,18 @@ export const LaunchSection: React.FC<LaunchSectionProps> = ({
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto mb-8 text-left">
                     <div className="bg-black/30 p-4 rounded-lg border border-indigo-500/20 backdrop-blur-sm">
-                        <div className="text-indigo-400 font-bold text-lg mb-1">5 Emails</div>
+                        <div className="text-indigo-400 font-bold text-lg mb-1">{emailCount} Email{emailCount !== 1 ? 's' : ''}</div>
                         <div className="text-gray-400 text-sm">Scheduled across 28 days</div>
                     </div>
                     {(recommendedChannels.includes('whatsapp')) && (
                         <div className="bg-black/30 p-4 rounded-lg border border-green-500/20 backdrop-blur-sm">
-                            <div className="text-green-400 font-bold text-lg mb-1">8 WhatsApp Msgs</div>
+                            <div className="text-green-400 font-bold text-lg mb-1">{whatsappCount} WhatsApp Msg{whatsappCount !== 1 ? 's' : ''}</div>
                             <div className="text-gray-400 text-sm">Personalized & Automated</div>
                         </div>
                     )}
                     {(recommendedChannels.includes('instagram')) && (
                         <div className="bg-black/30 p-4 rounded-lg border border-pink-500/20 backdrop-blur-sm">
-                            <div className="text-pink-400 font-bold text-lg mb-1">10 Posts</div>
+                            <div className="text-pink-400 font-bold text-lg mb-1">{socialCount} Post{socialCount !== 1 ? 's' : ''}</div>
                             <div className="text-gray-400 text-sm">Auto-published to Instagram</div>
                         </div>
                     )}

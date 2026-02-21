@@ -173,12 +173,15 @@ export const GeneratingCampaign: React.FC = () => {
             const script = await generateVideoScript(campaignData, strategy);
             setCompletedSteps(prev => [...prev, 'video_script']);
 
-            // 6. Video Generation
+            // 6. Video Generation (fire-and-forget — don't block the user)
             setCurrentStep(5);
-            // Don't await video generation fully if it takes too long, 
-            // but for now we'll await it as per requirements with a timeout handling in service?
-            // The service waits for completion. We should probably proceed if it fails or use fallback.
-            await generateCampaignVideo(campaignData, script);
+            // Set video_status BEFORE firing background task so dashboard sees 'generating' immediately
+            await supabase.from('campaigns').update({ video_status: 'generating' }).eq('id', campaignData.id);
+            // Start video generation in the background — it updates the DB when done.
+            // We don't await it because HeyGen takes 7-9 minutes.
+            generateCampaignVideo(campaignData, script).catch(err => {
+                console.error("Background video generation failed:", err);
+            });
             setCompletedSteps(prev => [...prev, 'video']);
 
             // 7. Finalize
@@ -200,26 +203,33 @@ export const GeneratingCampaign: React.FC = () => {
 
     // --- API CALL 1: STRATEGY ---
     const generateStrategy = async (campaignData: Campaign) => {
-        const prompt = `Generate a 4-week marketing campaign plan for:
-PRODUCT: ${campaignData.product_name}
-DESC: ${campaignData.product_description}
-AUDIENCE: ${campaignData.target_audience}
-TONE: ${campaignData.tone} ${campaignData.tone === 'Custom' ? `(${campaignData.tone_custom_words})` : ''}
-BUDGET: ₹${campaignData.budget}
-CHANNELS: ${JSON.stringify(campaignData.recommended_channels)}
+        const toneDescription = campaignData.tone === 'Custom'
+            ? `Custom — ${campaignData.tone_custom_words}`
+            : campaignData.tone;
+
+        const prompt = `Generate a 4-week marketing campaign plan for the following business:
+
+PRODUCT NAME: ${campaignData.product_name}
+PRODUCT DESCRIPTION: ${campaignData.product_description}
+TARGET AUDIENCE: ${campaignData.target_audience}
+LOCATION: ${campaignData.location || 'India (general)'}
+BUDGET: ₹${campaignData.budget.toLocaleString('en-IN')}
+CAMPAIGN TONE: ${toneDescription}
+CHANNELS TO USE: ${JSON.stringify(campaignData.recommended_channels)}
+LAUNCH DATE: ${campaignData.launch_date || 'Immediately'}
 
 The output MUST be valid JSON matching the schema:
 {
-  "campaign_name": "string",
-  "strategy_summary": "string",
-  "target_persona": "string",
+  "campaign_name": "string — creative name that reflects the product and tone",
+  "strategy_summary": "string — 3-4 sentences describing the overall approach, target positioning, and key message",
+  "target_persona": "string — detailed 3-4 sentence archetype of the ideal customer",
   "channels": ["string"],
-  "weekly_plan": [{ "week": 1, "theme": "string", "goal": "string", "tactics": [{ "day": 1, "channel": "string", "action": "string", "description": "string" }] }],
+  "weekly_plan": [{ "week": 1, "theme": "string", "goal": "string", "tactics": [{ "day": 1, "channel": "string", "action": "string", "description": "string — at least 2 actionable sentences" }] }],
   "budget_allocation": { "channel_name": number },
   "expected_outcomes": { "reach": "string", "engagement_rate": "string", "conversion_estimate": "string" }
 }`;
 
-        const systemPrompt = `You are an expert marketing strategist. Return ONLY valid JSON. No markdown.`;
+        const systemPrompt = `You are MiCA, an expert AI marketing strategist specializing in campaigns for small businesses, solo entrepreneurs, and social impact organizations in India. You understand the Indian market deeply — local buying behaviour, cultural nuances, and platforms like WhatsApp and Instagram that dominate Indian digital marketing. Return ONLY valid JSON. No markdown, no preamble.`;
 
         const response = await callAI({ systemPrompt, userPrompt: prompt, temperature: 0.7 });
         const strategyJson = JSON.parse(response.replace(/```json\n?|\n?```/g, '').trim());
@@ -231,29 +241,48 @@ The output MUST be valid JSON matching the schema:
 
     // --- API CALL 2: EMAILS ---
     const generateEmails = async (campaignData: Campaign, strategy: any) => {
-        const prompt = `Generate 5 marketing emails for this campaign.
+        const toneDescription = campaignData.tone === 'Custom'
+            ? `Custom — ${campaignData.tone_custom_words}`
+            : campaignData.tone;
+
+        const prompt = `Generate 5 complete marketing emails for this campaign. Each email must be a FULL, ready-to-send email — not a sample or a draft.
+
+CAMPAIGN CONTEXT:
+PRODUCT NAME: ${campaignData.product_name}
+PRODUCT DESCRIPTION: ${campaignData.product_description}
+TARGET AUDIENCE: ${campaignData.target_audience}
+LOCATION: ${campaignData.location || 'India (general)'}
+MARKETING BUDGET (this is the client's ad spend — NOT the product price): ₹${campaignData.budget.toLocaleString('en-IN')}
+CAMPAIGN TONE: ${toneDescription}
+CAMPAIGN NAME: ${strategy.campaign_name}
 STRATEGY SUMMARY: ${strategy.strategy_summary}
-TONE: ${campaignData.tone}
+TARGET PERSONA: ${strategy.target_persona}
 
 Output JSON format:
 {
   "emails": [
     {
       "template_order": 1,
-      "subject": "string",
-      "pre_header": "string",
-      "body": "HTML string with simple formatting",
-      "cta_text": "string",
+      "subject": "string — compelling subject line (max 60 chars)",
+      "pre_header": "string — preview text that complements the subject (max 90 chars)",
+      "body": "string — complete HTML email body using <p>, <br>, <strong>, <ul>, <li>. Must include: greeting, 2-3 paragraphs of engaging content, and a closing paragraph that leads into the CTA. Write in the exact campaign tone. Reference the product and audience specifically. Use ₹ for currency. Aim for 200-300 words of body content.",
+      "cta_text": "string — clear, action-oriented call-to-action button text (max 5 words)",
       "scheduled_day": 1
     }
   ]
 }
-Rules:
-- 5 emails total
-- Spread over 28 days
-- HTML body should be clean, use <p>, <br>, <strong>`;
 
-        const systemPrompt = `You are an email marketing expert. Return ONLY valid JSON.`;
+Rules:
+- 5 emails total, spread over 28 days (e.g. Day 1, 5, 10, 18, 26)
+- Each email must serve a distinct purpose: welcome → educate → proof/testimonial → urgency → last-chance
+- Match the tone EXACTLY: ${toneDescription}
+- Write for the Indian market — use ₹ for currency, reference Indian cultural context where relevant
+- Every email must be complete and ready to send — no placeholders like [Name] or [Link]
+- Open each email in a way that matches the tone (warm greeting for Warm & Inspirational, professional opener for Professional, etc.)
+- NEVER mention or invent a product price/cost. The marketing budget is NOT the product's price — they are completely different. Only mention pricing if specific pricing info appears in the PRODUCT DESCRIPTION above.
+- NEVER fabricate statistics, testimonials, or specific numbers (e.g. "500+ professionals", "92% of users"). Only use factual claims from the PRODUCT DESCRIPTION. If no stats are provided, focus on benefits and emotional appeal instead.`;
+
+        const systemPrompt = `You are MiCA, an expert AI marketing email copywriter specializing in campaigns for small businesses and entrepreneurs in India. You write complete, high-converting marketing emails that match the requested tone exactly. You understand Indian consumer psychology, cultural references, and what drives engagement in the Indian market. Use ₹ for currency, write in a way that resonates with Indian audiences. Return ONLY valid JSON. No markdown, no preamble.`;
 
         const response = await callAI({ systemPrompt, userPrompt: prompt, temperature: 0.7 });
         const emailsJson = JSON.parse(response.replace(/```json\n?|\n?```/g, '').trim());
@@ -269,16 +298,39 @@ Rules:
 
     // --- API CALL 3: CONTENT ---
     const generateContent = async (campaignData: Campaign) => {
+        const toneDescription = campaignData.tone === 'Custom'
+            ? `Custom — ${campaignData.tone_custom_words}`
+            : campaignData.tone;
+
         // WhatsApp Generation
         if (campaignData.recommended_channels.includes('whatsapp')) {
-            const waPrompt = `Generate 12 WhatsApp messages for a 4-week campaign:
-PRODUCT: ${campaignData.product_name}
-TONE: ${campaignData.tone}
+            const waPrompt = `Generate 12 complete WhatsApp messages for a 4-week marketing campaign. Each message must be a COMPLETE, ready-to-send WhatsApp message — personal, conversational, and action-oriented.
+
+CAMPAIGN CONTEXT:
+PRODUCT NAME: ${campaignData.product_name}
+PRODUCT DESCRIPTION: ${campaignData.product_description}
+TARGET AUDIENCE: ${campaignData.target_audience}
+LOCATION: ${campaignData.location || 'India (general)'}
+MARKETING BUDGET (this is the client's ad spend — NOT the product price): ₹${campaignData.budget.toLocaleString('en-IN')}
+CAMPAIGN TONE: ${toneDescription}
+
 Output JSON: { "whatsapp_messages": [{ "message_order": 1, "message_text": "string", "message_type": "string", "scheduled_day": 1 }] }
-Rule: Distribute messages evenly across days 1 to 28 (e.g., Day 1, 3, 7, 10, 14, 17, 21, 24, 28).`;
+
+Content Rules for each message:
+- Length: 60-120 words per message (conversational length, not too long)
+- Must feel personal — like a message from a trusted friend or local business owner, NOT a corporate blast
+- Include at least 1 relevant emoji per message (naturally placed, not excessive)
+- Every message must have a clear CTA (e.g. "Reply YES", "Click here", "DM us", "Call now", "Visit today")
+- Write in the exact tone: ${toneDescription}
+- Use ₹ for currency, reference Indian context where relevant
+- message_type options: announcement | follow_up | offer | testimonial | reminder | engagement
+- Vary the message types across the 12 messages to keep the sequence fresh
+- Distribute messages across days 1 to 28 (e.g., Day 1, 3, 5, 7, 10, 12, 14, 17, 19, 21, 24, 28)
+- NEVER mention or invent a product price/cost. The marketing budget is NOT the product's price. Only mention pricing if specific pricing info appears in the PRODUCT DESCRIPTION above.
+- NEVER fabricate statistics, testimonials, or specific numbers (e.g. "500+ professionals", "92% of users"). Only use factual claims from the PRODUCT DESCRIPTION. If no stats are provided, focus on benefits and emotional appeal instead.`;
 
             const waResponse = await callAI({
-                systemPrompt: "You are a WhatsApp marketing expert. Return valid JSON.",
+                systemPrompt: `You are MiCA, an expert WhatsApp marketing copywriter for Indian small businesses. You write WhatsApp messages that feel personal and human — like they come from a trusted local business, not a faceless corporation. Your messages are conversational, warm, culturally relevant to India, and always include a clear next step for the reader. You match the campaign tone exactly. Return ONLY valid JSON. No markdown, no preamble.`,
                 userPrompt: waPrompt,
                 temperature: 0.8
             });
@@ -296,14 +348,31 @@ Rule: Distribute messages evenly across days 1 to 28 (e.g., Day 1, 3, 7, 10, 14,
 
         // Social Media Generation
         if (campaignData.recommended_channels.includes('instagram')) {
-            const socialPrompt = `Generate 15 Instagram posts for a 4-week campaign:
-PRODUCT: ${campaignData.product_name}
-TONE: ${campaignData.tone}
+            const socialPrompt = `Generate 15 complete Instagram posts for a 4-week marketing campaign. Each post must be a COMPLETE, scroll-stopping caption — ready to publish as-is.
+
+CAMPAIGN CONTEXT:
+PRODUCT NAME: ${campaignData.product_name}
+PRODUCT DESCRIPTION: ${campaignData.product_description}
+TARGET AUDIENCE: ${campaignData.target_audience}
+LOCATION: ${campaignData.location || 'India (general)'}
+MARKETING BUDGET (this is the client's ad spend — NOT the product price): ₹${campaignData.budget.toLocaleString('en-IN')}
+CAMPAIGN TONE: ${toneDescription}
+
 Output JSON: { "social_posts": [{ "post_order": 1, "caption": "string", "hashtags": "string", "scheduled_day": 1, "image_suggestion": "string" }] }
-Rule: Distribute posts evenly across days 1 to 28.`;
+
+Content Rules for each post:
+- caption: 150-220 words. Must be scroll-stopping — open with a hook (question, bold statement, or relatable observation). Include 2-3 short paragraphs. End with a clear CTA ("Comment below", "DM us", "Link in bio", "Save this post", etc.)
+- hashtags: 5-8 relevant hashtags as a single string (e.g. "#SmallBusiness #MadeInIndia #..."). Mix broad and niche tags. Include at least 1-2 India-specific hashtags.
+- image_suggestion: 1-2 sentence description of the ideal visual for this post (used to generate the image)
+- Write in the exact tone: ${toneDescription}
+- Use ₹ for currency, Indian cultural references where relevant
+- Vary post types across the 15 posts: product showcase, behind-the-scenes, testimonial/social proof, educational/tips, offer/promotion, storytelling
+- Distribute posts evenly across days 1 to 28
+- NEVER mention or invent a product price/cost. The marketing budget is NOT the product's price. Only mention pricing if specific pricing info appears in the PRODUCT DESCRIPTION above.
+- NEVER fabricate statistics, testimonials, or specific numbers (e.g. "500+ professionals", "92% of users"). Only use factual claims from the PRODUCT DESCRIPTION. If no stats are provided, focus on benefits and emotional appeal instead.`;
 
             const socialResponse = await callAI({
-                systemPrompt: "You are an Instagram expert. Return valid JSON.",
+                systemPrompt: `You are MiCA, an expert Instagram content strategist for Indian small businesses and entrepreneurs. You create Instagram captions that stop the scroll, build genuine connection, and drive action. Your captions match the requested tone perfectly, use culturally relevant language for the Indian market, and always include a strong call-to-action. You know how to balance storytelling with sales. Return ONLY valid JSON. No markdown, no preamble.`,
                 userPrompt: socialPrompt,
                 temperature: 0.8
             });
@@ -452,16 +521,20 @@ Return ONLY valid JSON in this format:
             // 'script' variable here contains the full video agent prompt generated in the previous step
             const videoUrl = await generateVideo({ prompt: script });
 
-            await supabase.from('campaigns').update({
-                video_url: videoUrl,
-                video_status: 'completed'
-            }).eq('id', campaignData.id);
+            if (videoUrl && videoUrl.startsWith('http')) {
+                await supabase.from('campaigns').update({
+                    video_url: videoUrl,
+                    video_status: 'completed'
+                }).eq('id', campaignData.id);
+            } else {
+                console.warn("Video generation returned empty/invalid URL:", videoUrl);
+                // Keep status as 'generating' so dashboard continues to poll
+                // The video might still be processing on HeyGen's side
+            }
 
         } catch (err) {
             console.error("Video Generation Failed:", err);
-            // Fallback on error
             await supabase.from('campaigns').update({
-                video_url: HEYGEN_CONFIG.FALLBACK_VIDEO_URL, // Use fallback if real gen fails
                 video_status: 'failed'
             }).eq('id', campaignData.id);
         }
